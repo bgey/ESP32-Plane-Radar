@@ -187,16 +187,39 @@ src/
 | SCL (SCLK) | GPIO **4** |
 | BOOT (user) | GPIO **9** |
 
+## Wiring (ST7796S + XPT2046 ↔ Wemos S3 Mini)
+
+> Placeholder pin plan — confirm against your board's silkscreen before wiring. Radar layout/geometry still assumes 240×240 on this target; the display is up but drawing is not yet tuned for 480×320.
+
+11-pin header: `CLK`/`MOS`/`MIS` are shared internally between the display and touch controller (only one physical pin each), with `CS1` selecting the display and `CS2`/`PEN` for the touch controller.
+
+| Display header pin | ESP32-S3 |
+|---------|----------|
+| VCC | 3V3 |
+| GND | GND |
+| CLK | GPIO **12** |
+| MOS (MOSI) | GPIO **11** |
+| RES (reset) | GPIO **2** |
+| DC | GPIO **5** |
+| BLK (backlight) | GPIO **16** (left header) |
+| MIS (MISO) | GPIO **13** |
+| CS1 (display CS) | GPIO **10** |
+| CS2 (touch CS) | GPIO **18** (left header) |
+| PEN (touch IRQ) | GPIO **34** (left header) |
+
+The BOOT button in the pin tables above (GPIO 9 on the C3, GPIO 0 on the S3) is each board's own onboard push-button — it is not a display wire and needs no connection to the screen.
+
 ## Build
 
 ```bash
-pio run -t upload
+pio run -e supermini -t upload
+pio run -e s3mini -t upload
 pio device monitor
 ```
 
-- PlatformIO env: **`supermini`**
+- PlatformIO envs: **`supermini`** (ESP32-C3 + GC9A01) and **`s3mini`** (ESP32-S3 + ST7796S)
 - Serial: **115200** baud
-- USB CDC on boot enabled in `platformio.ini` for the Super Mini
+- USB CDC on boot enabled in `platformio.ini` for both boards' native USB
 
 ### Web-flashable release image
 

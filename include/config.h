@@ -23,6 +23,43 @@ constexpr unsigned long kWifiDownGraceMs = 4000;
 /** Minimum interval between background reconnect tries. */
 constexpr unsigned long kWifiReconnectIntervalMs = 15000;
 
+#if defined(PLANE_RADAR_TARGET_S3_ST7796)
+
+// --- BOOT button (Wemos S3 Mini onboard button, active LOW) ---
+constexpr gpio_num_t kBootPin = GPIO_NUM_0;
+constexpr unsigned long kBootResetHoldMs = 3000UL;
+/** Ignore BOOT taps shorter than this (debounce). */
+constexpr unsigned long kBootTapMinMs = 40UL;
+
+// --- Display: ST7796S 4" 480×320 (SPI) ---
+// Placeholder pin plan for the Wemos S3 Mini — confirm against your board's
+// silkscreen before wiring; only GPIO0 (onboard BOOT button) is fixed.
+// Board header labels (11-pin: CLK/MOS/MIS shared with touch) in comments.
+// One GPIO per header row (rows are "a/b" pairs); BLK and CS2 are on the left header.
+constexpr gpio_num_t kDisplayPinRst = GPIO_NUM_2;    // RES
+constexpr gpio_num_t kDisplayPinCs = GPIO_NUM_10;    // CS1
+constexpr gpio_num_t kDisplayPinDc = GPIO_NUM_5;     // DC
+constexpr gpio_num_t kDisplayPinMosi = GPIO_NUM_11;  // MOS
+constexpr gpio_num_t kDisplayPinSclk = GPIO_NUM_12;  // CLK
+constexpr gpio_num_t kDisplayPinMiso = GPIO_NUM_13;  // MIS
+constexpr gpio_num_t kDisplayPinBacklight = GPIO_NUM_16;  // BLK
+
+// --- Touch: XPT2046 resistive, shares the display SPI bus (CLK/MOS/MIS) ---
+constexpr gpio_num_t kTouchPinCs = GPIO_NUM_18;   // CS2
+constexpr gpio_num_t kTouchPinIrq = GPIO_NUM_34;  // PEN
+
+constexpr int kDisplayWidth = 480;
+constexpr int kDisplayHeight = 320;
+
+constexpr uint32_t kDisplaySpiWriteHz = 40000000;
+constexpr uint32_t kTouchSpiHz = 1000000;
+constexpr bool kDisplayInvert = false;
+constexpr bool kDisplayRgbOrder = false;
+/** Panel is native 320x480 (portrait); rotation 1 yields 480x320 (landscape). */
+constexpr int kDisplayRotation = 1;
+
+#else
+
 // --- BOOT button (ESP32-C3 Super Mini, active LOW) ---
 constexpr gpio_num_t kBootPin = GPIO_NUM_9;
 constexpr unsigned long kBootResetHoldMs = 3000UL;
@@ -43,6 +80,9 @@ constexpr uint32_t kDisplaySpiWriteHz = 40000000;
 // GC9A01 modules often need invert + BGR for correct black/green output
 constexpr bool kDisplayInvert = true;
 constexpr bool kDisplayRgbOrder = true;
+constexpr int kDisplayRotation = 0;
+
+#endif  // PLANE_RADAR_TARGET_S3_ST7796
 
 // --- Radar center defaults (overridden via WiFi setup portal) ---
 constexpr double kDefaultRadarLat = 52.3676;
