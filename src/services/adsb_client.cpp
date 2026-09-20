@@ -441,6 +441,7 @@ bool fetchFlightDataJson(const String& url, const char* callsign,
     Serial.println("flight data: http.begin failed");
     return false;
   }
+  http.useHTTP10(true);
   http.setTimeout(config::kFlightLookupTimeoutMs);
   const int code = performGetWithPoll(http, config::kFlightLookupTimeoutMs);
 
@@ -549,6 +550,8 @@ bool fetchUpdate(double center_lat, double center_lon, float fetch_radius_km) {
     return false;
   }
 
+  // The raw-stream reader below cannot decode chunked bodies; HTTP/1.0 avoids them.
+  http.useHTTP10(true);
   http.setTimeout(kAdsbRequestTimeoutMs);
   const int code = performGetWithPoll(http, kAdsbRequestTimeoutMs);
   if (code != HTTP_CODE_OK) {
