@@ -14,6 +14,7 @@
 #include <thread>
 
 #include "config.h"
+#include "geo.h"
 #include "hardware/display.h"
 #include "services/radar_location.h"
 #include "sim_api.h"
@@ -40,7 +41,6 @@ Options g_opts;
 services::adsb::Aircraft g_planes[services::adsb::kMaxAircraft];
 size_t g_plane_count = 0;
 
-constexpr double kKmPerDegLat = 111.32;
 constexpr float kPi = 3.14159265f;
 
 void makeAircraft(float outer_km) {
@@ -55,7 +55,7 @@ void makeAircraft(float outer_km) {
 
   const double lat0 = services::location::lat();
   const double lon0 = services::location::lon();
-  const double km_per_deg_lon = kKmPerDegLat * std::cos(lat0 * kPi / 180.0);
+  const geo::KmPerDeg deg = geo::kmPerDegAt(lat0);
 
   g_plane_count = static_cast<size_t>(g_opts.planes);
   if (g_plane_count > services::adsb::kMaxAircraft) {
@@ -66,8 +66,8 @@ void makeAircraft(float outer_km) {
     std::memset(&ac, 0, sizeof(ac));
     const float r = outer_km * 1.25f * std::sqrt(uni(rng));
     const float a = uni(rng) * 2.0f * kPi;
-    ac.lat = static_cast<float>(lat0 + (r * std::cos(a)) / kKmPerDegLat);
-    ac.lon = static_cast<float>(lon0 + (r * std::sin(a)) / km_per_deg_lon);
+    ac.lat = static_cast<float>(lat0 + (r * std::cos(a)) / deg.lat);
+    ac.lon = static_cast<float>(lon0 + (r * std::sin(a)) / deg.lon);
     ac.track_deg = uni(rng) * 360.0f;
     ac.nose_deg = ac.track_deg;
     ac.gs_knots = 180.0f + uni(rng) * 320.0f;
@@ -89,8 +89,8 @@ void makeAircraft(float outer_km) {
     services::adsb::Aircraft& ac = g_planes[g_plane_count++];
     std::memset(&ac, 0, sizeof(ac));
     const float bearing = 250.0f * kPi / 180.0f;
-    ac.lat = static_cast<float>(lat0 + (4.5f * std::cos(bearing)) / kKmPerDegLat);
-    ac.lon = static_cast<float>(lon0 + (4.5f * std::sin(bearing)) / km_per_deg_lon);
+    ac.lat = static_cast<float>(lat0 + (4.5f * std::cos(bearing)) / deg.lat);
+    ac.lon = static_cast<float>(lon0 + (4.5f * std::sin(bearing)) / deg.lon);
     ac.track_deg = 70.0f;
     ac.nose_deg = 70.0f;
     ac.gs_knots = 180.0f;
@@ -110,13 +110,13 @@ void makeAircraft(float outer_km) {
 
 void advanceAircraft(float dt_s) {
   const double lat0 = services::location::lat();
-  const double km_per_deg_lon = kKmPerDegLat * std::cos(lat0 * kPi / 180.0);
+  const geo::KmPerDeg deg = geo::kmPerDegAt(lat0);
   for (size_t i = 0; i < g_plane_count; ++i) {
     services::adsb::Aircraft& ac = g_planes[i];
     const float km = ac.gs_knots * 1.852f / 3600.0f * dt_s * 20.0f;  // 20x speed-up
     const float t = ac.track_deg * kPi / 180.0f;
-    ac.lat += static_cast<float>(km * std::cos(t) / kKmPerDegLat);
-    ac.lon += static_cast<float>(km * std::sin(t) / km_per_deg_lon);
+    ac.lat += static_cast<float>(km * std::cos(t) / deg.lat);
+    ac.lon += static_cast<float>(km * std::sin(t) / deg.lon);
     if (ac.has_vrate) {
       ac.alt_ft += ac.vrate_fpm * dt_s * 20.0f / 60.0f;
       std::snprintf(ac.alt, sizeof(ac.alt), "%d ft", static_cast<int>(ac.alt_ft));
@@ -241,10 +241,16 @@ int userFunc(bool* running) {
 }  // namespace
 
 int main(int argc, char** argv) {
+  double center_lat = config::kDefaultRadarLat;
+  double center_lon = config::kDefaultRadarLon;
   for (int i = 1; i < argc; ++i) {
     const char* a = argv[i];
     if (std::strcmp(a, "--window") == 0) {
       g_opts.window = true;
+    } else if (std::strcmp(a, "--lat") == 0 && i + 1 < argc) {
+      center_lat = std::atof(argv[++i]);
+    } else if (std::strcmp(a, "--lon") == 0 && i + 1 < argc) {
+      center_lon = std::atof(argv[++i]);
     } else if (std::strcmp(a, "--inbound") == 0) {
       g_opts.inbound = true;
     } else if (std::strcmp(a, "--inbound-alt") == 0 && i + 1 < argc) {
@@ -277,11 +283,12 @@ int main(int argc, char** argv) {
       std::fprintf(stderr,
                    "usage: %s [--out file.png] [--range 0-3] [--planes N] "
                    "[--seed N] [--rotation 0|1] [--weather TEXT] [--time TEXT] "
-                   "[--textscale 80-130] [--tap X,Y]... [--inbound] [--inbound-alt FT] [--window]\n",
+                   "[--textscale 80-130] [--tap X,Y]... [--inbound] [--inbound-alt FT] [--lat DEG] [--lon DEG] [--window]\n",
                    argv[0]);
       return 2;
     }
   }
+  sim::setCenter(center_lat, center_lon);
   if (!g_opts.window) {
     // The dummy video driver cannot create an accelerated renderer, which makes the
     // panel open a new window on every update; the software renderer avoids that.

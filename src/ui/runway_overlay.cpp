@@ -6,6 +6,7 @@
 #include <cstdlib>
 
 #include "data/large_airports.h"
+#include "geo.h"
 #include "hardware/display_font.h"
 #include "services/display_settings.h"
 #include "services/radar_location.h"
@@ -17,7 +18,6 @@ namespace lgfx_fonts = lgfx::v1::fonts;
 namespace ui::runway {
 namespace {
 
-constexpr float kKmPerDeg = 111.0f;
 constexpr size_t kMaxAirportLabels = 32;
 
 bool s_in_range[data::large_airports::kAirportCount];
@@ -79,10 +79,10 @@ float e7ToDeg(int32_t e7) { return static_cast<float>(e7) * 1e-7f; }
 
 void offsetKmFromCenter(float lat, float lon, float* dx_km, float* dy_km,
                         float* dist_km) {
-  *dx_km =
-      static_cast<float>(lon - services::location::lon()) * kKmPerDeg;
-  *dy_km =
-      static_cast<float>(lat - services::location::lat()) * kKmPerDeg;
+  const double center_lat = services::location::lat();
+  const geo::KmPerDeg& km = geo::kmPerDegCached(center_lat);
+  *dx_km = static_cast<float>(lon - services::location::lon()) * km.lon;
+  *dy_km = static_cast<float>(lat - center_lat) * km.lat;
   *dist_km = sqrtf((*dx_km) * (*dx_km) + (*dy_km) * (*dy_km));
 }
 

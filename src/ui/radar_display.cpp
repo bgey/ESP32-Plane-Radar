@@ -9,6 +9,7 @@
 #include <cstring>
 
 #include "config.h"
+#include "geo.h"
 #include "hardware/display.h"
 #include "hardware/display_font.h"
 #include "services/adsb_client.h"
@@ -241,14 +242,13 @@ void initPalette() {
       radar::kAlertBrightR, radar::kAlertBrightG, radar::kAlertBrightB);
 }
 
-constexpr float kKmPerDeg = 111.0f;
-
+/** Offset from the radar centre in km; degrees of longitude shrink with latitude. */
 void offsetKmFromCenter(float lat, float lon, float* dx_km, float* dy_km,
                         float* dist_km) {
-  *dx_km =
-      static_cast<float>(lon - services::location::lon()) * kKmPerDeg;
-  *dy_km =
-      static_cast<float>(lat - services::location::lat()) * kKmPerDeg;
+  const double center_lat = services::location::lat();
+  const geo::KmPerDeg& km = geo::kmPerDegCached(center_lat);
+  *dx_km = static_cast<float>(lon - services::location::lon()) * km.lon;
+  *dy_km = static_cast<float>(lat - center_lat) * km.lat;
   *dist_km = sqrtf((*dx_km) * (*dx_km) + (*dy_km) * (*dy_km));
 }
 

@@ -6,11 +6,12 @@
 #include <cstdio>
 #include <cstring>
 
+#include "geo.h"
+
 namespace services::alert {
 namespace {
 
 constexpr size_t kMaxActive = 8;
-constexpr double kKmPerDegLat = 111.32;
 constexpr double kPi = 3.14159265358979;
 
 struct Active {
@@ -39,9 +40,9 @@ bool evaluate(const adsb::Aircraft& plane, double lat0, double lon0,
     return false;
   }
 
-  const double km_per_deg_lon = kKmPerDegLat * std::cos(lat0 * kPi / 180.0);
-  const double px = (plane.lon - lon0) * km_per_deg_lon;
-  const double py = (plane.lat - lat0) * kKmPerDegLat;
+  const geo::KmPerDeg& km = geo::kmPerDegCached(lat0);
+  const double px = (plane.lon - lon0) * km.lon;
+  const double py = (plane.lat - lat0) * km.lat;
 
   const double speed_km_s = plane.gs_knots * 1.852 / 3600.0;
   const double track = plane.track_deg * kPi / 180.0;
