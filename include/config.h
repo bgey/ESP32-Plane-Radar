@@ -47,6 +47,8 @@ constexpr gpio_num_t kDisplayPinBacklight = GPIO_NUM_16;  // BLK
 // --- Touch: XPT2046 resistive, shares the display SPI bus (CLK/MOS/MIS) ---
 constexpr gpio_num_t kTouchPinCs = GPIO_NUM_18;   // CS2
 constexpr gpio_num_t kTouchPinIrq = GPIO_NUM_35;  // PEN
+/** false = poll the XPT2046 over SPI and ignore PEN (works even if PEN is not wired). */
+constexpr bool kTouchUseIrq = false;
 
 constexpr int kDisplayWidth = 480;
 constexpr int kDisplayHeight = 320;

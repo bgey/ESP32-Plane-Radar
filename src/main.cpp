@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "hardware/display.h"
+#include "hardware/touch_calibration.h"
 #include "services/adsb_client.h"
 #include "services/display_settings.h"
 #include "services/ota_update.h"
@@ -91,6 +92,7 @@ void setup() {
 
   bootButtonInit();
   displayInit();
+  touchCalibrationInit();
   if (wifiShowsSetupScreenOnBoot()) {
     statusScreenPortal();
   }

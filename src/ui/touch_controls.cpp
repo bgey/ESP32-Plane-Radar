@@ -7,6 +7,7 @@
 #include "config.h"
 #include "hardware/display.h"
 #include "hardware/display_font.h"
+#include "hardware/touch_calibration.h"
 #include "ui/radar_range.h"
 #include "ui/radar_theme.h"
 
@@ -23,8 +24,11 @@ constexpr int kGlyphThicknessPx = 4;
 
 enum Box { kNone = -1, kMinus = 0, kRange = 1, kPlus = 2 };
 
+constexpr unsigned long kRecalibrateHoldMs = 3000;
+
 bool s_down = false;
 int s_pressed = kNone;
+unsigned long s_range_hold_start_ms = 0;
 
 bool s_drawn = false;
 uint8_t s_drawn_index = 0;
@@ -153,6 +157,20 @@ bool touchControlsPoll() {
 
   if (down) {
     const int box = hitTest(x, y);
+    // Holding the range box recalibrates the touch panel.
+    if (!s_down) {
+      s_range_hold_start_ms = box == kRange ? millis() : 0;
+    } else if (box != kRange) {
+      s_range_hold_start_ms = 0;
+    }
+    if (s_range_hold_start_ms != 0 &&
+        millis() - s_range_hold_start_ms >= kRecalibrateHoldMs) {
+      s_range_hold_start_ms = 0;
+      s_down = false;
+      s_pressed = kNone;
+      touchCalibrationRun();
+      return true;  // the caller repaints everything
+    }
     if (!s_down) {
       // A press only counts on an enabled button; the range box is inert.
       s_pressed = (box == kMinus || box == kPlus) && boxEnabled(box) ? box : kNone;

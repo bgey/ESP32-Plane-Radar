@@ -84,7 +84,7 @@ public:
       cfg.pin_mosi = static_cast<int>(config::kDisplayPinMosi);
       cfg.pin_miso = static_cast<int>(config::kDisplayPinMiso);
       cfg.pin_cs = static_cast<int>(config::kTouchPinCs);
-      cfg.pin_int = static_cast<int>(config::kTouchPinIrq);
+      cfg.pin_int = config::kTouchUseIrq ? static_cast<int>(config::kTouchPinIrq) : -1;
       cfg.x_min = 0;
       cfg.x_max = 4095;
       cfg.y_min = 0;
