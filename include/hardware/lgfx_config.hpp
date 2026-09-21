@@ -7,9 +7,41 @@
 
 #if defined(PLANE_RADAR_SIM)
 
+/**
+ * Panel_sdl waits up to 1 ms on the render thread after every low-level draw call,
+ * so text and rounded shapes drawn straight to the panel take hundreds of ms. This
+ * drops that handshake and just flags the framebuffer as modified; the SDL thread
+ * copies it to the texture on its own schedule.
+ */
+struct SimPanel : public lgfx::Panel_sdl {
+  void drawPixelPreclipped(uint_fast16_t x, uint_fast16_t y, uint32_t rawcolor) override {
+    lgfx::Panel_FrameBufferBase::drawPixelPreclipped(x, y, rawcolor);
+    ++_modified_counter;
+  }
+  void writeFillRectPreclipped(uint_fast16_t x, uint_fast16_t y, uint_fast16_t w,
+                               uint_fast16_t h, uint32_t rawcolor) override {
+    lgfx::Panel_FrameBufferBase::writeFillRectPreclipped(x, y, w, h, rawcolor);
+    ++_modified_counter;
+  }
+  void writeImage(uint_fast16_t x, uint_fast16_t y, uint_fast16_t w, uint_fast16_t h,
+                  lgfx::pixelcopy_t* param, bool use_dma) override {
+    lgfx::Panel_FrameBufferBase::writeImage(x, y, w, h, param, use_dma);
+    ++_modified_counter;
+  }
+  void writeImageARGB(uint_fast16_t x, uint_fast16_t y, uint_fast16_t w,
+                      uint_fast16_t h, lgfx::pixelcopy_t* param) override {
+    lgfx::Panel_FrameBufferBase::writeImageARGB(x, y, w, h, param);
+    ++_modified_counter;
+  }
+  void writePixels(lgfx::pixelcopy_t* param, uint32_t len, bool use_dma) override {
+    lgfx::Panel_FrameBufferBase::writePixels(param, len, use_dma);
+    ++_modified_counter;
+  }
+};
+
 /** Desktop simulator: SDL window (or headless dummy video driver). */
 class LGFX : public lgfx::LGFX_Device {
-  lgfx::Panel_sdl _panel;
+  SimPanel _panel;
 
 public:
   LGFX() {

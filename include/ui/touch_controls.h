@@ -3,18 +3,25 @@
 namespace ui {
 
 /**
- * Range control row in the info panel: [-] [range] [+]. "-" zooms out (larger
- * range), "+" zooms in (smaller range). Only present when the layout has an
- * info panel (radar::kSideBands); otherwise both functions do nothing.
+ * Touch controls in the info panel (only when the layout has one,
+ * radar::kSideBands; otherwise everything here does nothing):
+ *   - Range row [-] [range] [+]: "-" zooms out (larger range), "+" zooms in.
+ *   - SETUP button above the range row: opens the settings screen.
+ *   - Tapping the alert banner dismisses that alert.
+ *   - Holding the range box for 3 s recalibrates the touch panel.
  */
+enum class TouchAction {
+  kNone,
+  /** State changed; the caller must repaint the radar. */
+  kRedraw,
+  /** The SETUP button was tapped. */
+  kOpenSettings,
+};
 
-/** Paint the row. Repaints only when its state changed unless force is set. */
+/** Paint the controls. Repaints only when their state changed unless force is set. */
 void touchControlsDraw(bool force);
 
-/**
- * Poll the touch panel and handle taps on the row. Returns true when the
- * range changed, so the caller must redraw the radar.
- */
-bool touchControlsPoll();
+/** Poll the touch panel and handle taps on the controls. */
+TouchAction touchControlsPoll();
 
 }  // namespace ui

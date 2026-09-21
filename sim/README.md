@@ -24,6 +24,11 @@ sim/build/radar_sim --out sim/out/radar.png --planes 12
 # Headless with scripted taps on the range control ([-] at ~x345, [+] at ~x455, y~297)
 sim/build/radar_sim --out sim/out/tap.png --tap 345,297 --tap 455,297
 
+# More tap targets (window pixels): SETUP button (400,257), alert banner (400,170).
+# Inside settings: ALERTS tab (170,22), DONE (440,22), stepper [-] x~310 / [+] x~446
+# on rows at y = 66 + 38*row. Example: open settings, go to ALERTS, raise the altitude
+sim/build/radar_sim --out sim/out/settings.png --tap 400,257 --tap 170,22 --tap 446,104
+
 # Live window (WSLg on Windows 11): aircraft drift at 20x speed, and mouse
 # clicks act as touch, so the range control works
 sim/build/radar_sim --window

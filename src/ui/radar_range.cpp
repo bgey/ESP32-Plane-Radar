@@ -103,6 +103,16 @@ bool useMiles() { return s_use_miles; }
 
 bool showRunways() { return s_show_runways; }
 
+void setUseMiles(bool use_miles) {
+  s_use_miles = use_miles;
+  saveUseMiles();
+}
+
+void setShowRunways(bool show) {
+  s_show_runways = show;
+  saveShowRunways();
+}
+
 void saveMilesFromPortal(const char* checkbox_value) {
   s_use_miles = portalCheckboxChecked(checkbox_value);
   saveUseMiles();

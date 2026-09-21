@@ -14,4 +14,7 @@ void alertBannerDraw(bool force);
 /** Call every loop: advances the flash and the countdown. Cheap when nothing changed. */
 void alertBannerTick();
 
+/** True when the banner is showing and (x, y) is inside it (a tap there dismisses it). */
+bool alertBannerContains(int x, int y);
+
 }  // namespace ui

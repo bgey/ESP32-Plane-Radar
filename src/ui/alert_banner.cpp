@@ -18,8 +18,8 @@ namespace lgfx_fonts = lgfx::v1::fonts;
 namespace ui {
 namespace {
 
-constexpr int kBannerTopPx = 118;
-constexpr int kBannerHeightPx = 152;
+constexpr int kBannerTopPx = 110;
+constexpr int kBannerHeightPx = 126;
 constexpr int kBannerInsetPx = 6;
 constexpr int kTitleHeightPx = 12;
 constexpr int kCallsignHeightPx = 18;
@@ -127,7 +127,7 @@ void alertBannerDraw(bool force) {
   const int seconds =
       static_cast<int>(std::max(0.0f, info.time_s - elapsed_s));
   const int phase = static_cast<int>((millis() / kFlashHalfPeriodMs) % 2);
-  const size_t count = services::alert::count();
+  const size_t count = services::alert::pendingCount();
 
   if (!force && s_drawn_active && phase == s_drawn_phase &&
       seconds == s_drawn_seconds && count == s_drawn_count &&
@@ -144,5 +144,13 @@ void alertBannerDraw(bool force) {
 }
 
 void alertBannerTick() { alertBannerDraw(false); }
+
+bool alertBannerContains(int x, int y) {
+  if (!radar::kSideBands || !s_drawn_active) {
+    return false;
+  }
+  return x >= bannerX() && x < bannerX() + bannerWidth() && y >= kBannerTopPx &&
+         y < kBannerTopPx + kBannerHeightPx;
+}
 
 }  // namespace ui

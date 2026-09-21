@@ -159,6 +159,31 @@ int textScalePercent() { return s_text_scale_percent; }
 
 const char* otaPassword() { return s_ota_password; }
 
+void setFooterEnabled(bool enabled) {
+  s_footer_enabled = enabled;
+  persist();
+}
+
+void setWeatherEnabled(bool enabled) {
+  s_weather_enabled = enabled;
+  persist();
+}
+
+void setTemperatureFahrenheit(bool fahrenheit) {
+  s_temperature_fahrenheit = fahrenheit;
+  persist();
+}
+
+void setUse24HourClock(bool use_24_hour) {
+  s_use_24_hour_clock = use_24_hour;
+  persist();
+}
+
+void setTextScalePercent(int percent) {
+  s_text_scale_percent = clampTextScalePercent(percent);
+  persist();
+}
+
 void saveFromPortal(const char* footer_checkbox, const char* weather_checkbox,
                     const char* fahrenheit_checkbox,
                     const char* clock24_checkbox,

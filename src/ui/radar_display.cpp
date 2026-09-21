@@ -766,8 +766,10 @@ struct BeyondDotDrawItem {
   int dist_sq = 0;
 };
 
-void drawAlertRing(int x, int y, int radius) {
-  for (int i = 0; i < 3; ++i) {
+/** Full 3 px ring while an alert is pending; a thin 1 px ring once it is dismissed. */
+void drawAlertRing(int x, int y, int radius, bool dismissed) {
+  const int thickness = dismissed ? 1 : 3;
+  for (int i = 0; i < thickness; ++i) {
     s_draw->drawCircle(x, y, radius - i, radar::kColorAlertRing);
   }
 }
@@ -842,7 +844,8 @@ void drawAircraft() {
   for (size_t d = 0; d < dot_count; ++d) {
     drawBeyondRingDot(dots[d].x, dots[d].y);
     if (services::alert::isAlerting(planes[dots[d].index])) {
-      drawAlertRing(dots[d].x, dots[d].y, radar::kBeyondRingDotRadiusPx + 6);
+      drawAlertRing(dots[d].x, dots[d].y, radar::kBeyondRingDotRadiusPx + 6,
+                    services::alert::isDismissed(planes[dots[d].index]));
     }
   }
 
@@ -855,7 +858,8 @@ void drawAircraft() {
                     planes[i].gs_knots, radar::kColorTrackVector);
     drawHeadingTriangle(x, y, planes[i].nose_deg, radar::kColorAircraft);
     if (services::alert::isAlerting(planes[i])) {
-      drawAlertRing(x, y, radar::kAlertRingRadiusPx);
+      drawAlertRing(x, y, radar::kAlertRingRadiusPx,
+                    services::alert::isDismissed(planes[i]));
     }
   }
   for (size_t d = 0; d < draw_count; ++d) {

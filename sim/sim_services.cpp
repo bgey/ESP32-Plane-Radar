@@ -51,9 +51,28 @@ double lon() { return g_center_lon; }
 }  // namespace services::location
 
 namespace services::settings {
-bool footerEnabled() { return true; }
-bool weatherEnabled() { return true; }
+namespace {
+bool g_footer = true;
+bool g_weather = true;
+bool g_fahrenheit = false;
+bool g_clock24 = true;
+}  // namespace
+
+bool footerEnabled() { return g_footer; }
+bool weatherEnabled() { return g_weather; }
+bool temperatureFahrenheit() { return g_fahrenheit; }
+bool use24HourClock() { return g_clock24; }
 int textScalePercent() { return g_text_scale; }
+
+void setFooterEnabled(bool enabled) { g_footer = enabled; }
+void setWeatherEnabled(bool enabled) { g_weather = enabled; }
+void setTemperatureFahrenheit(bool fahrenheit) { g_fahrenheit = fahrenheit; }
+void setUse24HourClock(bool use_24_hour) { g_clock24 = use_24_hour; }
+void setTextScalePercent(int percent) {
+  g_text_scale = percent < kTextScaleMinPercent
+                     ? kTextScaleMinPercent
+                     : (percent > kTextScaleMaxPercent ? kTextScaleMaxPercent : percent);
+}
 }  // namespace services::settings
 
 namespace services::weather {

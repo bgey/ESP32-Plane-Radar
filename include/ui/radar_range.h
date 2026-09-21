@@ -47,6 +47,9 @@ float fetchRadiusKm();
 
 bool useMiles();
 bool showRunways();
+/** Direct setters for the on-device settings screen; each persists immediately. */
+void setUseMiles(bool use_miles);
+void setShowRunways(bool show);
 /** WiFi portal checkbox: "T" = miles, otherwise km. */
 void saveMilesFromPortal(const char* checkbox_value);
 void saveRunwaysFromPortal(const char* checkbox_value);

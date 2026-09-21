@@ -1,7 +1,9 @@
 #include "services/traffic_alert.h"
 
 #include <Arduino.h>
+#include <Preferences.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -14,23 +16,53 @@ namespace {
 constexpr size_t kMaxActive = 8;
 constexpr double kPi = 3.14159265358979;
 
+constexpr char kPrefsNamespace[] = "alerts";
+constexpr char kKeyEnabled[] = "on";
+constexpr char kKeyAltitude[] = "altFt";
+constexpr char kKeyPass[] = "passKm";
+constexpr char kKeyTime[] = "timeS";
+
+// An active alert only clears once it is clearly outside its thresholds (no flicker).
+constexpr float kExitPassFactor = 1.35f;
+constexpr float kExitTimeFactor = 1.25f;
+constexpr float kExitAltitudeMarginFt = 500.0f;
+
 struct Active {
   char hex[7];
   Info info;
   size_t index;
+  bool dismissed;
 };
 
+Settings s_settings = {true, kDefaultMaxAltitudeFt, kDefaultMaxPassKm,
+                       kDefaultMaxTimeS};
 Active s_active[kMaxActive];
 size_t s_count = 0;
 unsigned long s_updated_ms = 0;
 
-bool wasActive(const Active* previous, size_t previous_count, const char* hex) {
-  for (size_t i = 0; i < previous_count; ++i) {
-    if (strcmp(previous[i].hex, hex) == 0) {
-      return true;
+void save() {
+  Preferences prefs;
+  if (!prefs.begin(kPrefsNamespace, false)) {
+    return;
+  }
+  prefs.putBool(kKeyEnabled, s_settings.enabled);
+  prefs.putFloat(kKeyAltitude, s_settings.max_altitude_ft);
+  prefs.putFloat(kKeyPass, s_settings.max_pass_km);
+  prefs.putFloat(kKeyTime, s_settings.max_time_s);
+  prefs.end();
+}
+
+float clampf(float value, float lo, float hi) {
+  return std::max(lo, std::min(hi, value));
+}
+
+const Active* findActive(const Active* list, size_t n, const char* hex) {
+  for (size_t i = 0; i < n; ++i) {
+    if (strcmp(list[i].hex, hex) == 0) {
+      return &list[i];
     }
   }
-  return false;
+  return nullptr;
 }
 
 /** True when the aircraft qualifies; fills info with its projected closest approach. */
@@ -69,9 +101,12 @@ bool evaluate(const adsb::Aircraft& plane, double lat0, double lon0,
     alt = 0.0;
   }
 
-  const float max_pass = was_active ? kExitPassKm : kMaxPassKm;
-  const float max_time = was_active ? kExitTimeToPassS : kMaxTimeToPassS;
-  const float max_alt = was_active ? kExitAltitudeFt : kMaxAltitudeFt;
+  const float max_pass =
+      s_settings.max_pass_km * (was_active ? kExitPassFactor : 1.0f);
+  const float max_time =
+      s_settings.max_time_s * (was_active ? kExitTimeFactor : 1.0f);
+  const float max_alt =
+      s_settings.max_altitude_ft + (was_active ? kExitAltitudeMarginFt : 0.0f);
   if (pass_km > max_pass || t > max_time || alt > max_alt) {
     return false;
   }
@@ -84,6 +119,49 @@ bool evaluate(const adsb::Aircraft& plane, double lat0, double lon0,
 
 }  // namespace
 
+void init() {
+  Preferences prefs;
+  if (!prefs.begin(kPrefsNamespace, true)) {
+    return;
+  }
+  s_settings.enabled = prefs.getBool(kKeyEnabled, true);
+  s_settings.max_altitude_ft = clampf(
+      prefs.getFloat(kKeyAltitude, kDefaultMaxAltitudeFt), kMinAltitudeFt,
+      kMaxAltitudeFt);
+  s_settings.max_pass_km =
+      clampf(prefs.getFloat(kKeyPass, kDefaultMaxPassKm), kMinPassKm, kMaxPassKm);
+  s_settings.max_time_s =
+      clampf(prefs.getFloat(kKeyTime, kDefaultMaxTimeS), kMinTimeS, kMaxTimeS);
+  prefs.end();
+}
+
+const Settings& settings() { return s_settings; }
+
+void setEnabled(bool enabled) {
+  s_settings.enabled = enabled;
+  save();
+}
+
+void setMaxAltitudeFt(float ft) {
+  s_settings.max_altitude_ft = clampf(ft, kMinAltitudeFt, kMaxAltitudeFt);
+  save();
+}
+
+void setMaxPassKm(float km) {
+  s_settings.max_pass_km = clampf(km, kMinPassKm, kMaxPassKm);
+  save();
+}
+
+void setMaxTimeS(float seconds) {
+  s_settings.max_time_s = clampf(seconds, kMinTimeS, kMaxTimeS);
+  save();
+}
+
+void resetSettings() {
+  s_settings = {true, kDefaultMaxAltitudeFt, kDefaultMaxPassKm, kDefaultMaxTimeS};
+  save();
+}
+
 void update(double center_lat, double center_lon) {
   Active before[kMaxActive];
   const size_t before_count = s_count;
@@ -91,6 +169,9 @@ void update(double center_lat, double center_lon) {
 
   s_count = 0;
   s_updated_ms = millis();
+  if (!s_settings.enabled) {
+    return;
+  }
 
   const size_t n = adsb::aircraftCount();
   const adsb::Aircraft* planes = adsb::aircraftList();
@@ -99,41 +180,71 @@ void update(double center_lat, double center_lon) {
       continue;
     }
     Info info{};
-    const bool was = wasActive(before, before_count, planes[i].hex);
-    if (!evaluate(planes[i], center_lat, center_lon, was, &info)) {
+    const Active* previous = findActive(before, before_count, planes[i].hex);
+    if (!evaluate(planes[i], center_lat, center_lon, previous != nullptr, &info)) {
       continue;
     }
     Active& slot = s_active[s_count++];
     snprintf(slot.hex, sizeof(slot.hex), "%s", planes[i].hex);
     slot.info = info;
     slot.index = i;
+    // A dismissal lasts until the aircraft leaves the alert zone.
+    slot.dismissed = previous != nullptr && previous->dismissed;
   }
 }
 
 size_t count() { return s_count; }
 
-bool isAlerting(const adsb::Aircraft& plane) {
+size_t pendingCount() {
+  size_t pending = 0;
   for (size_t i = 0; i < s_count; ++i) {
-    if (strcmp(s_active[i].hex, plane.hex) == 0) {
-      return true;
+    if (!s_active[i].dismissed) {
+      ++pending;
     }
   }
-  return false;
+  return pending;
+}
+
+bool isAlerting(const adsb::Aircraft& plane) {
+  return findActive(s_active, s_count, plane.hex) != nullptr;
+}
+
+bool isDismissed(const adsb::Aircraft& plane) {
+  const Active* active = findActive(s_active, s_count, plane.hex);
+  return active != nullptr && active->dismissed;
 }
 
 bool mostUrgent(const adsb::Aircraft** plane, Info* info) {
-  if (s_count == 0) {
-    return false;
-  }
-  size_t best = 0;
-  for (size_t i = 1; i < s_count; ++i) {
-    if (s_active[i].info.time_s < s_active[best].info.time_s) {
-      best = i;
+  const Active* best = nullptr;
+  for (size_t i = 0; i < s_count; ++i) {
+    if (s_active[i].dismissed) {
+      continue;
+    }
+    if (best == nullptr || s_active[i].info.time_s < best->info.time_s) {
+      best = &s_active[i];
     }
   }
-  *plane = &adsb::aircraftList()[s_active[best].index];
-  *info = s_active[best].info;
+  if (best == nullptr) {
+    return false;
+  }
+  *plane = &adsb::aircraftList()[best->index];
+  *info = best->info;
   return true;
+}
+
+void dismissMostUrgent() {
+  Active* best = nullptr;
+  for (size_t i = 0; i < s_count; ++i) {
+    if (s_active[i].dismissed) {
+      continue;
+    }
+    if (best == nullptr || s_active[i].info.time_s < best->info.time_s) {
+      best = &s_active[i];
+    }
+  }
+  if (best != nullptr) {
+    best->dismissed = true;
+  }
 }
 
 unsigned long updatedMs() { return s_updated_ms; }

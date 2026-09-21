@@ -19,6 +19,14 @@ bool use24HourClock();
 int textScalePercent();
 const char* otaPassword();
 
+/** Direct setters for the on-device settings screen; each persists immediately. */
+void setFooterEnabled(bool enabled);
+void setWeatherEnabled(bool enabled);
+void setTemperatureFahrenheit(bool fahrenheit);
+void setUse24HourClock(bool use_24_hour);
+/** Clamped to [kTextScaleMinPercent, kTextScaleMaxPercent]. */
+void setTextScalePercent(int percent);
+
 /**
  * Store web-portal values. An empty OTA password keeps the current password so
  * the portal never needs to echo the stored secret into its HTML.

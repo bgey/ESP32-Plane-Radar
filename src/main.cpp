@@ -18,6 +18,7 @@
 #include "ui/alert_banner.h"
 #include "ui/radar_display.h"
 #include "ui/radar_range.h"
+#include "ui/settings_screen.h"
 #include "ui/status_screens.h"
 #include "ui/touch_controls.h"
 
@@ -55,17 +56,35 @@ void onRangeTap() {
 }
 
 void handleTouch() {
-  if (g_radar_visible && ui::touchControlsPoll()) {
-    announceRange();
-    if (WiFi.status() == WL_CONNECTED) {
-      ui::radarDisplayDraw();
-    }
+  if (!g_radar_visible) {
+    return;
+  }
+  switch (ui::touchControlsPoll()) {
+    case ui::TouchAction::kRedraw:
+      announceRange();
+      if (WiFi.status() == WL_CONNECTED) {
+        ui::radarDisplayDraw();
+      }
+      break;
+    case ui::TouchAction::kOpenSettings:
+      ui::settingsScreenOpen();
+      break;
+    case ui::TouchAction::kNone:
+      break;
+  }
+}
+
+void closeSettings() {
+  // Thresholds may have changed, so re-evaluate before repainting.
+  services::alert::update(services::location::lat(), services::location::lon());
+  if (WiFi.status() == WL_CONNECTED) {
+    ui::radarDisplayDraw();
   }
 }
 
 void handleBootButton() {
   bootButtonPollLongPress();
-  if (bootButtonConsumeTap()) {
+  if (bootButtonConsumeTap() && !ui::settingsScreenActive()) {
     onRangeTap();
   }
 }
@@ -99,6 +118,7 @@ void setup() {
   services::location::init();
   ui::radar::rangeInit();
   services::settings::init();
+  services::alert::init();
   services::adsb::setPollFn(wifiLoop);
   services::weather::setPollFn(wifiLoop);
 
@@ -109,15 +129,24 @@ void setup() {
 
 void loop() {
   handleBootButton();
-  handleTouch();
-  if (g_radar_visible) {
-    ui::alertBannerTick();
-  }
   wifiLoop();
 
   if (services::ota::inProgress()) {
     delay(10);
     return;
+  }
+
+  if (ui::settingsScreenActive()) {
+    if (ui::settingsScreenPoll()) {
+      closeSettings();
+    }
+    delay(10);
+    return;
+  }
+
+  handleTouch();
+  if (g_radar_visible) {
+    ui::alertBannerTick();
   }
 
   if (WiFi.status() != WL_CONNECTED) {

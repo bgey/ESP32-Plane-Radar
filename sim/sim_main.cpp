@@ -22,6 +22,7 @@
 #include "services/traffic_alert.h"
 #include "ui/alert_banner.h"
 #include "ui/radar_range.h"
+#include "ui/settings_screen.h"
 #include "ui/touch_controls.h"
 
 namespace {
@@ -156,11 +157,29 @@ size_t g_tap_count = 0;
 /** Poll the touch controls for `ms` milliseconds, redrawing when the range changes. */
 void pumpTouch(int ms) {
   for (int t = 0; t < ms; t += 10) {
-    if (ui::touchControlsPoll()) {
-      char label[12];
-      ui::radar::formatCurrentRing3Label(label, sizeof(label));
-      std::printf("range -> %s\n", label);
-      ui::radarDisplayDraw();
+    if (ui::settingsScreenActive()) {
+      if (ui::settingsScreenPoll()) {
+        std::printf("settings closed\n");
+        services::alert::update(services::location::lat(), services::location::lon());
+        ui::radarDisplayDraw();
+      }
+    } else {
+      switch (ui::touchControlsPoll()) {
+        case ui::TouchAction::kRedraw: {
+          char label[12];
+          ui::radar::formatCurrentRing3Label(label, sizeof(label));
+          std::printf("redraw (range %s, %zu pending alerts)\n", label,
+                      services::alert::pendingCount());
+          ui::radarDisplayDraw();
+          break;
+        }
+        case ui::TouchAction::kOpenSettings:
+          std::printf("settings opened\n");
+          ui::settingsScreenOpen();
+          break;
+        case ui::TouchAction::kNone:
+          break;
+      }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
@@ -172,19 +191,34 @@ void injectTap(int x, int y) {
   if (window == nullptr) {
     return;
   }
+  // SDL handles injected events on its own thread with some latency, so wait for each
+  // press and release to be seen; otherwise a "quick tap" can look like a long hold.
+  auto wait_for_touch = [](bool want) {
+    for (int waited = 0; waited < 2000; waited += 10) {
+      int32_t tx = 0;
+      int32_t ty = 0;
+      if (tft.getTouch(&tx, &ty) == want) {
+        return;
+      }
+      pumpTouch(10);
+    }
+  };
+
   SDL_WarpMouseInWindow(window, x, y);
-  pumpTouch(200);
+  pumpTouch(100);
   SDL_Event ev{};
   ev.type = SDL_MOUSEBUTTONDOWN;
   ev.button.windowID = 1;
   ev.button.button = SDL_BUTTON_LEFT;
   ev.button.state = SDL_PRESSED;
   SDL_PushEvent(&ev);
-  pumpTouch(300);
+  wait_for_touch(true);
+  pumpTouch(80);
   ev.type = SDL_MOUSEBUTTONUP;
   ev.button.state = SDL_RELEASED;
   SDL_PushEvent(&ev);
-  pumpTouch(300);
+  wait_for_touch(false);
+  pumpTouch(150);
 }
 
 int userFunc(bool* running) {
@@ -195,6 +229,7 @@ int userFunc(bool* running) {
   tft.simConfigure(landscape ? 480 : 320, landscape ? 320 : 480);
   displayInit();
   tft.setRotation(0);
+  services::alert::init();
   ui::radar::rangeInit();
   for (int i = 0; i < g_opts.range; ++i) {
     ui::radar::rangeNext();
@@ -224,6 +259,9 @@ int userFunc(bool* running) {
   size_t last_alerts = services::alert::count();
   while (*running) {
     pumpTouch(20);
+    if (ui::settingsScreenActive()) {
+      continue;  // like the firmware: no radar updates behind the settings screen
+    }
     ui::alertBannerTick();
     if (millis() - last_move_ms >= 500) {
       last_move_ms = millis();
@@ -295,7 +333,9 @@ int main(int argc, char** argv) {
     setenv("SDL_VIDEODRIVER", "dummy", 0);
     setenv("SDL_RENDER_DRIVER", "software", 0);
   }
-  return lgfx::Panel_sdl::main(userFunc);
+  // A step time of 0 disables the panel's debugger-style throttling (one frame per
+  // drawing call), which otherwise makes every redraw take hundreds of milliseconds.
+  return lgfx::Panel_sdl::main(userFunc, 0);
 }
 
 #endif  // SDL_h_
