@@ -228,6 +228,11 @@ void fillTagFields(Aircraft* ac, const JsonObject& plane) {
   ac->has_vrate = readJsonFloat(plane, "baro_rate", &value) ||
                   readJsonFloat(plane, "geom_rate", &value);
   ac->vrate_fpm = ac->has_vrate ? value : 0.0f;
+
+  // Only aircraft that announce themselves as gliders are recognised: emitter
+  // category B1, or the generic glider type designator.
+  const char* category = plane["category"] | "";
+  ac->is_glider = strcmp(category, "B1") == 0 || strncmp(ac->type, "GLID", 4) == 0;
 }
 
 bool sameKey(const EnrichmentCacheEntry& entry, const Aircraft& plane) {

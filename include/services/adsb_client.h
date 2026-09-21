@@ -23,6 +23,8 @@ struct Aircraft {
   float vrate_fpm;
   bool has_alt;
   bool has_vrate;
+  /** Emitter category B1 (glider/sailplane) or aircraft type GLID. */
+  bool is_glider;
 };
 
 constexpr size_t kMaxAircraft = 64;

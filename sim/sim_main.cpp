@@ -36,6 +36,7 @@ struct Options {
   int rotation = -1;  // -1 = use config::kDisplayRotation
   bool inbound = false;
   bool wifi_boot = false;
+  bool inbound_glider = false;
   int inbound_alt_ft = 2600;
   bool window = false;
 };
@@ -101,6 +102,7 @@ void makeAircraft(float outer_km) {
     std::snprintf(ac.callsign, sizeof(ac.callsign), "%s", "TRA6LOW");
     std::snprintf(ac.type, sizeof(ac.type), "%s", "B738");
     std::snprintf(ac.alt, sizeof(ac.alt), "%d ft", g_opts.inbound_alt_ft);
+    ac.is_glider = g_opts.inbound_glider;
     ac.has_alt = true;
     ac.alt_ft = static_cast<float>(g_opts.inbound_alt_ft);
     ac.has_vrate = true;
@@ -313,6 +315,9 @@ int main(int argc, char** argv) {
       center_lat = std::atof(argv[++i]);
     } else if (std::strcmp(a, "--lon") == 0 && i + 1 < argc) {
       center_lon = std::atof(argv[++i]);
+    } else if (std::strcmp(a, "--inbound-glider") == 0) {
+      g_opts.inbound = true;
+      g_opts.inbound_glider = true;
     } else if (std::strcmp(a, "--wifi-boot") == 0) {
       g_opts.wifi_boot = true;
     } else if (std::strcmp(a, "--inbound") == 0) {

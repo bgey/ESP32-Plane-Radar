@@ -107,6 +107,10 @@ const Row kAlertRows[] = {
      [] { return services::alert::settings().enabled; },
      [] { services::alert::setEnabled(!services::alert::settings().enabled); },
      nullptr, nullptr, nullptr},
+    {"Ignore gliders", Kind::kToggle,
+     [] { return services::alert::settings().ignore_gliders; },
+     [] { services::alert::setIgnoreGliders(!services::alert::settings().ignore_gliders); },
+     nullptr, nullptr, nullptr},
     {"Alert below altitude", Kind::kStepper, nullptr, nullptr,
      [](char* out, size_t n) {
        snprintf(out, n, "%d ft",

@@ -19,8 +19,14 @@ struct Settings {
   float max_pass_km;
   /** Seconds until the closest approach. */
   float max_time_s;
+  /**
+   * Skip aircraft that identify as gliders (they circle low and slow, which gives
+   * unreliable tracks and many false alerts). They are still shown on the radar.
+   */
+  bool ignore_gliders;
 };
 
+constexpr bool kDefaultIgnoreGliders = true;
 constexpr float kDefaultMaxAltitudeFt = 3000.0f;
 constexpr float kDefaultMaxPassKm = 1.5f;
 constexpr float kDefaultMaxTimeS = 120.0f;
@@ -51,6 +57,7 @@ struct Info {
 void init();
 const Settings& settings();
 void setEnabled(bool enabled);
+void setIgnoreGliders(bool ignore);
 void setMaxAltitudeFt(float ft);
 void setMaxPassKm(float km);
 void setMaxTimeS(float seconds);

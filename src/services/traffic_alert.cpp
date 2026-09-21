@@ -21,6 +21,7 @@ constexpr char kKeyEnabled[] = "on";
 constexpr char kKeyAltitude[] = "altFt";
 constexpr char kKeyPass[] = "passKm";
 constexpr char kKeyTime[] = "timeS";
+constexpr char kKeyIgnoreGliders[] = "noGlider";
 
 // An active alert only clears once it is clearly outside its thresholds (no flicker).
 constexpr float kExitPassFactor = 1.35f;
@@ -35,7 +36,7 @@ struct Active {
 };
 
 Settings s_settings = {true, kDefaultMaxAltitudeFt, kDefaultMaxPassKm,
-                       kDefaultMaxTimeS};
+                       kDefaultMaxTimeS, kDefaultIgnoreGliders};
 Active s_active[kMaxActive];
 size_t s_count = 0;
 unsigned long s_updated_ms = 0;
@@ -49,6 +50,7 @@ void save() {
   prefs.putFloat(kKeyAltitude, s_settings.max_altitude_ft);
   prefs.putFloat(kKeyPass, s_settings.max_pass_km);
   prefs.putFloat(kKeyTime, s_settings.max_time_s);
+  prefs.putBool(kKeyIgnoreGliders, s_settings.ignore_gliders);
   prefs.end();
 }
 
@@ -69,6 +71,9 @@ const Active* findActive(const Active* list, size_t n, const char* hex) {
 bool evaluate(const adsb::Aircraft& plane, double lat0, double lon0,
               bool was_active, Info* info) {
   if (!plane.has_alt || plane.gs_knots < kMinGroundSpeedKnots) {
+    return false;
+  }
+  if (plane.is_glider && s_settings.ignore_gliders) {
     return false;
   }
 
@@ -132,6 +137,7 @@ void init() {
       clampf(prefs.getFloat(kKeyPass, kDefaultMaxPassKm), kMinPassKm, kMaxPassKm);
   s_settings.max_time_s =
       clampf(prefs.getFloat(kKeyTime, kDefaultMaxTimeS), kMinTimeS, kMaxTimeS);
+  s_settings.ignore_gliders = prefs.getBool(kKeyIgnoreGliders, kDefaultIgnoreGliders);
   prefs.end();
 }
 
@@ -139,6 +145,11 @@ const Settings& settings() { return s_settings; }
 
 void setEnabled(bool enabled) {
   s_settings.enabled = enabled;
+  save();
+}
+
+void setIgnoreGliders(bool ignore) {
+  s_settings.ignore_gliders = ignore;
   save();
 }
 
@@ -158,7 +169,8 @@ void setMaxTimeS(float seconds) {
 }
 
 void resetSettings() {
-  s_settings = {true, kDefaultMaxAltitudeFt, kDefaultMaxPassKm, kDefaultMaxTimeS};
+  s_settings = {true, kDefaultMaxAltitudeFt, kDefaultMaxPassKm, kDefaultMaxTimeS,
+                kDefaultIgnoreGliders};
   save();
 }
 
