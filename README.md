@@ -200,12 +200,12 @@ src/
 | CLK | GPIO **12** |
 | MOS (MOSI) | GPIO **11** |
 | RES (reset) | GPIO **2** |
-| DC | GPIO **5** |
+| DC | GPIO **4** |
 | BLK (backlight) | GPIO **16** (left header) |
 | MIS (MISO) | GPIO **13** |
 | CS1 (display CS) | GPIO **10** |
 | CS2 (touch CS) | GPIO **18** (left header) |
-| PEN (touch IRQ) | GPIO **34** (left header) |
+| PEN (touch IRQ) | GPIO **35** (left header) |
 
 The BOOT button in the pin tables above (GPIO 9 on the C3, GPIO 0 on the S3) is each board's own onboard push-button — it is not a display wire and needs no connection to the screen.
 

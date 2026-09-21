@@ -38,7 +38,7 @@ constexpr unsigned long kBootTapMinMs = 40UL;
 // One GPIO per header row (rows are "a/b" pairs); BLK and CS2 are on the left header.
 constexpr gpio_num_t kDisplayPinRst = GPIO_NUM_2;    // RES
 constexpr gpio_num_t kDisplayPinCs = GPIO_NUM_10;    // CS1
-constexpr gpio_num_t kDisplayPinDc = GPIO_NUM_5;     // DC
+constexpr gpio_num_t kDisplayPinDc = GPIO_NUM_4;     // DC
 constexpr gpio_num_t kDisplayPinMosi = GPIO_NUM_11;  // MOS
 constexpr gpio_num_t kDisplayPinSclk = GPIO_NUM_12;  // CLK
 constexpr gpio_num_t kDisplayPinMiso = GPIO_NUM_13;  // MIS
@@ -46,7 +46,7 @@ constexpr gpio_num_t kDisplayPinBacklight = GPIO_NUM_16;  // BLK
 
 // --- Touch: XPT2046 resistive, shares the display SPI bus (CLK/MOS/MIS) ---
 constexpr gpio_num_t kTouchPinCs = GPIO_NUM_18;   // CS2
-constexpr gpio_num_t kTouchPinIrq = GPIO_NUM_34;  // PEN
+constexpr gpio_num_t kTouchPinIrq = GPIO_NUM_35;  // PEN
 
 constexpr int kDisplayWidth = 480;
 constexpr int kDisplayHeight = 320;
