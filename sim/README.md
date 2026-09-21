@@ -25,8 +25,9 @@ SDL_VIDEODRIVER=dummy sim/build/radar_sim --out sim/out/radar.png --range 1 --pl
 sim/build/radar_sim --window
 ```
 
-Options: `--range 0-3` (preset index), `--planes N`, `--seed N`, `--rotation 0-3`
-(0 = native portrait 320x480, 1 = landscape 480x320, the firmware default), `--out FILE`, `--window`.
+Options: `--range 0-3` (preset index), `--planes N`, `--seed N`, `--rotation 0|1`
+(0 = portrait 320x480, 1 = landscape 480x320, the firmware default; the window is
+sized to match; 180-degree flips are not simulated), `--out FILE`, `--window`.
 
 Stubs live in `sim/stubs` (Arduino `Serial`/`millis`, `Preferences`, `driver/gpio.h`);
 fake services (aircraft, weather, settings) are in `sim/sim_services.cpp`.

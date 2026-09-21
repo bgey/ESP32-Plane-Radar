@@ -13,15 +13,19 @@ class LGFX : public lgfx::LGFX_Device {
 
 public:
   LGFX() {
-    auto cfg = _panel.config();
-    // Same native portrait geometry as the ST7796S; setRotation() gives landscape.
-    cfg.memory_width = 320;
-    cfg.memory_height = 480;
-    cfg.panel_width = 320;
-    cfg.panel_height = 480;
-    _panel.config(cfg);
+    simConfigure(480, 320);
     _panel.setScaling(1, 1);
     setPanel(&_panel);
+  }
+
+  /** Set the SDL window/framebuffer size; call before init(). */
+  void simConfigure(int width, int height) {
+    auto cfg = _panel.config();
+    cfg.memory_width = width;
+    cfg.memory_height = height;
+    cfg.panel_width = width;
+    cfg.panel_height = height;
+    _panel.config(cfg);
   }
 };
 

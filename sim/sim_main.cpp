@@ -110,10 +110,13 @@ bool savePng(const char* path) {
 }
 
 int userFunc(bool* running) {
+  // The SDL window is sized once at init, so size it for the final orientation
+  // and keep the panel itself at rotation 0 (the SDL panel does not flip 180 degrees).
+  const int rotation = g_opts.rotation >= 0 ? g_opts.rotation : config::kDisplayRotation;
+  const bool landscape = (rotation & 1) != 0;
+  tft.simConfigure(landscape ? 480 : 320, landscape ? 320 : 480);
   displayInit();
-  if (g_opts.rotation >= 0) {
-    tft.setRotation(g_opts.rotation);
-  }
+  tft.setRotation(0);
   ui::radar::rangeInit();
   for (int i = 0; i < g_opts.range; ++i) {
     ui::radar::rangeNext();
@@ -127,6 +130,13 @@ int userFunc(bool* running) {
     // Panel_sdl::main() would otherwise wait for a window-close event forever.
     std::fflush(stdout);
     std::_Exit(saved ? 0 : 1);
+  }
+
+  if (SDL_Window* w = SDL_GetWindowFromID(1)) {
+    int ww = 0;
+    int wh = 0;
+    SDL_GetWindowSize(w, &ww, &wh);
+    std::printf("window %dx%d, display %dx%d\n", ww, wh, tft.width(), tft.height());
   }
 
   while (*running) {
@@ -153,11 +163,11 @@ int main(int argc, char** argv) {
     } else if (std::strcmp(a, "--seed") == 0 && i + 1 < argc) {
       g_opts.seed = static_cast<unsigned>(std::atoi(argv[++i]));
     } else if (std::strcmp(a, "--rotation") == 0 && i + 1 < argc) {
-      g_opts.rotation = std::atoi(argv[++i]) & 3;
+      g_opts.rotation = std::atoi(argv[++i]) & 1;
     } else {
       std::fprintf(stderr,
                    "usage: %s [--out file.png] [--range 0-3] [--planes N] "
-                   "[--seed N] [--rotation 0-3] [--window]\n",
+                   "[--seed N] [--rotation 0|1] [--window]\n",
                    argv[0]);
       return 2;
     }
