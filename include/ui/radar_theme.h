@@ -2,14 +2,31 @@
 
 #include <cstdint>
 
+#include "config.h"
+
 namespace ui::radar {
 
+#if defined(PLANE_RADAR_TARGET_S3_ST7796)
+/** Radar square (px), centred on the panel; weather/clock use the side bands. */
+constexpr int kSize = 320;
+constexpr bool kSideBands = true;
+#else
 constexpr int kSize = 240;
+constexpr bool kSideBands = false;
+#endif
 constexpr int kCenterX = kSize / 2;
 constexpr int kCenterY = kSize / 2;
 
+/** Top-left of the radar square on the panel. */
+constexpr int kRadarOriginX = (config::kDisplayWidth - kSize) / 2;
+constexpr int kRadarOriginY = (config::kDisplayHeight - kSize) / 2;
+
 /** Outermost grid ring (inside edge labels). */
+#if defined(PLANE_RADAR_TARGET_S3_ST7796)
+constexpr int kGridOuterRadius = 143;
+#else
 constexpr int kGridOuterRadius = 107;
+#endif
 
 /** N: offset from top edge (top_center, negative = up). */
 constexpr int kCardinalNorthOffsetY = -1;
@@ -20,7 +37,11 @@ constexpr int kCardinalSouthOffsetY = 3;
 constexpr int kScaleGapFromOuterRing = 6;
 
 /** Target cap height (px) for N/S/E/W. */
+#if defined(PLANE_RADAR_TARGET_S3_ST7796)
+constexpr int kCardinalLabelHeightPx = 16;
+#else
 constexpr int kCardinalLabelHeightPx = 14;
+#endif
 /** Scale label is this many px shorter than cardinals. */
 constexpr int kScaleBelowCardinalPx = 3;
 
@@ -32,9 +53,15 @@ constexpr float kGridStrokeHalfWidth = 1.0f;
 constexpr int kCenterDotRadius = 2;
 
 /** Filled aircraft symbol (nose triangle). */
+#if defined(PLANE_RADAR_TARGET_S3_ST7796)
+constexpr int kAircraftNoseLenPx = 10;
+constexpr int kAircraftTailLenPx = 4;
+constexpr int kAircraftTailHalfPx = 5;
+#else
 constexpr int kAircraftNoseLenPx = 8;
 constexpr int kAircraftTailLenPx = 3;
 constexpr int kAircraftTailHalfPx = 4;
+#endif
 /** Track vector: ground distance covered in this many seconds at current gs. */
 constexpr float kAircraftTrackHorizonSec = 60.0f;
 /** Minimum visible vector when gs > 0 (px). */
@@ -57,18 +84,33 @@ constexpr int kAircraftInsideRingInsetPx =
     kAircraftNoseLenPx + kAircraftTailHalfPx + 1;
 
 /** Beyond-ring traffic: bearing cues on screen rim (correct direction, fixed radius). */
+#if defined(PLANE_RADAR_TARGET_S3_ST7796)
+constexpr int kBeyondRingDotRadiusPx = 5;
+#else
 constexpr int kBeyondRingDotRadiusPx = 4;
+#endif
 constexpr int kBeyondRingScreenMarginPx = 2;
 /** Target cap height (px) for aircraft tags (bold, slightly above scale label). */
+#if defined(PLANE_RADAR_TARGET_S3_ST7796)
+constexpr int kAircraftTagLabelHeightPx = 15;
+#else
 constexpr int kAircraftTagLabelHeightPx = 13;
+#endif
 
-/** Two-row weather/time overlay. */
+/** Two-row weather/time overlay inside the round panel (kSideBands == false). */
 constexpr int kFooterTopY = 194;
 constexpr int kFooterBottomY = 233;
 constexpr int kFooterWeatherY = 197;
 constexpr int kFooterTimeY = 216;
 constexpr int kFooterTimeOnlyY = 205;
 constexpr int kFooterLabelHeightPx = 13;
+
+/** Side bands (kSideBands == true): clock on the left, weather on the right. */
+constexpr int kBandWidthPx = kRadarOriginX;
+constexpr int kBandPadPx = 5;
+constexpr int kBandTimeHeightPx = 24;
+constexpr int kBandLineHeightPx = 15;
+constexpr int kBandLineGapPx = 3;
 
 /** RGB565 palette targets (applied in initPalette). */
 constexpr uint8_t kBgR = 4;

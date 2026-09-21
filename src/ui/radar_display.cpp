@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
@@ -559,6 +560,188 @@ void drawFooter() {
                  radar::kColorTagAltitude);
 }
 
+bool s_band_metrics_ready = false;
+float s_band_time_vlw_size = 0.60f;
+float s_band_line_vlw_size = 0.40f;
+bool s_bands_valid = false;
+char s_band_time[16] = {};
+char s_band_date[16] = {};
+char s_band_weather[32] = {};
+
+void initBandMetrics() {
+  if (s_band_metrics_ready) {
+    return;
+  }
+  if (displayFontIsSmooth()) {
+    s_band_time_vlw_size = findVlwSizeForHeight(radar::kBandTimeHeightPx);
+    s_band_line_vlw_size = findVlwSizeForHeight(radar::kBandLineHeightPx);
+  }
+  s_band_metrics_ready = true;
+}
+
+/** factor < 1 shrinks the text so it fits a narrow band. */
+void applyBandStyle(bool large, float factor = 1.0f) {
+  initBandMetrics();
+  if (displayFontIsSmooth()) {
+    displayFontSetSmoothSize(
+        *s_draw, (large ? s_band_time_vlw_size : s_band_line_vlw_size) *
+                     configuredTextScale() * factor);
+  } else {
+    displayFontSetBitmap(*s_draw, large ? &lgfx_fonts::FreeSansBold12pt7b
+                                        : &lgfx_fonts::FreeSansBold9pt7b);
+    s_draw->setTextSize(configuredTextScale() * factor);
+  }
+}
+
+float bandFitFactor(int text_w, int max_w) {
+  return text_w > max_w ? static_cast<float>(max_w) / static_cast<float>(text_w)
+                        : 1.0f;
+}
+
+constexpr size_t kBandMaxLines = 6;
+constexpr size_t kBandLineLen = 24;
+
+/** Greedy word wrap of text into lines no wider than max_w (current font). */
+size_t wrapWords(const char* text, int max_w, char lines[][kBandLineLen],
+                 size_t max_lines) {
+  size_t count = 0;
+  char current[kBandLineLen] = {};
+  const char* p = text;
+  while (*p != '\0') {
+    while (*p == ' ') {
+      ++p;
+    }
+    if (*p == '\0') {
+      break;
+    }
+    char word[kBandLineLen] = {};
+    size_t w = 0;
+    while (*p != '\0' && *p != ' ' && w + 1 < sizeof(word)) {
+      word[w++] = *p++;
+    }
+
+    char candidate[kBandLineLen * 2] = {};
+    if (current[0] == '\0') {
+      snprintf(candidate, sizeof(candidate), "%s", word);
+    } else {
+      snprintf(candidate, sizeof(candidate), "%s %s", current, word);
+    }
+    if (current[0] == '\0' || s_draw->textWidth(candidate) <= max_w) {
+      snprintf(current, sizeof(current), "%s", candidate);
+    } else {
+      if (count < max_lines) {
+        snprintf(lines[count++], kBandLineLen, "%s", current);
+      }
+      snprintf(current, sizeof(current), "%s", word);
+    }
+  }
+  if (current[0] != '\0' && count < max_lines) {
+    snprintf(lines[count++], kBandLineLen, "%s", current);
+  }
+  return count;
+}
+
+void drawBandText(int band_x, int y, const char* text, uint16_t color) {
+  s_draw->setTextDatum(textdatum_t::top_center);
+  s_draw->setTextColor(color, radar::kColorFooterBackground);
+  s_draw->drawString(text, band_x + radar::kBandWidthPx / 2, y);
+}
+
+/**
+ * Clock (left) and weather (right) beside the round radar. Drawn straight to
+ * the panel and only when the text changes, so it costs nothing per frame.
+ */
+void drawSideBands(bool force) {
+  const bool enabled = services::settings::footerEnabled();
+  char date_time[20] = {};
+  char time_text[16] = {};
+  char date_text[16] = {};
+  char weather[32] = {};
+  if (enabled) {
+    services::weather::formatDateTimeLine(date_time, sizeof(date_time));
+    const char* space = strchr(date_time, ' ');
+    if (space != nullptr) {
+      snprintf(time_text, sizeof(time_text), "%.*s",
+               static_cast<int>(space - date_time), date_time);
+      while (*space == ' ') {
+        ++space;
+      }
+      snprintf(date_text, sizeof(date_text), "%s", space);
+    } else {
+      snprintf(time_text, sizeof(time_text), "%s", date_time);
+    }
+    if (services::settings::weatherEnabled()) {
+      services::weather::formatWeatherLine(weather, sizeof(weather));
+    }
+  }
+
+  if (!force && s_bands_valid && strcmp(time_text, s_band_time) == 0 &&
+      strcmp(date_text, s_band_date) == 0 &&
+      strcmp(weather, s_band_weather) == 0) {
+    return;
+  }
+  snprintf(s_band_time, sizeof(s_band_time), "%s", time_text);
+  snprintf(s_band_date, sizeof(s_band_date), "%s", date_text);
+  snprintf(s_band_weather, sizeof(s_band_weather), "%s", weather);
+  s_bands_valid = true;
+
+  const DrawScope scope(tft);
+  displayFontEnsureLoaded(tft);
+  const int height = config::kDisplayHeight;
+  const int right_x = config::kDisplayWidth - radar::kBandWidthPx;
+  const uint16_t fill =
+      enabled ? radar::kColorFooterBackground : radar::kColorBackground;
+  tft.fillRect(0, 0, radar::kBandWidthPx, height, fill);
+  tft.fillRect(right_x, 0, radar::kBandWidthPx, height, fill);
+  if (!enabled) {
+    return;
+  }
+  tft.drawFastVLine(radar::kBandWidthPx - 1, 0, height, radar::kColorGrid);
+  tft.drawFastVLine(right_x, 0, height, radar::kColorGrid);
+
+  const int max_w = radar::kBandWidthPx - 2 * radar::kBandPadPx;
+
+  applyBandStyle(true);
+  const float time_fit = bandFitFactor(tft.textWidth(time_text), max_w);
+  applyBandStyle(true, time_fit);
+  const int time_h = tft.fontHeight();
+  applyBandStyle(false);
+  const float date_fit = bandFitFactor(tft.textWidth(date_text), max_w);
+  applyBandStyle(false, date_fit);
+  const int date_h = tft.fontHeight();
+  const int date_block =
+      date_text[0] != '\0' ? radar::kBandLineGapPx + date_h : 0;
+  int y = (height - (time_h + date_block)) / 2;
+  applyBandStyle(true, time_fit);
+  drawBandText(0, y, time_text, radar::kColorTagAltitude);
+  if (date_text[0] != '\0') {
+    applyBandStyle(false, date_fit);
+    drawBandText(0, y + time_h + radar::kBandLineGapPx, date_text,
+                 radar::kColorTagAltitude);
+  }
+
+  if (weather[0] != '\0') {
+    applyBandStyle(false);
+    char lines[kBandMaxLines][kBandLineLen] = {};
+    const size_t n = wrapWords(weather, max_w, lines, kBandMaxLines);
+    int widest = 0;
+    for (size_t i = 0; i < n; ++i) {
+      widest = std::max(widest, static_cast<int>(tft.textWidth(lines[i])));
+    }
+    applyBandStyle(false, bandFitFactor(widest, max_w));
+    const int line_h = tft.fontHeight();
+    const int block =
+        static_cast<int>(n) * line_h +
+        (n > 0 ? static_cast<int>(n - 1) * radar::kBandLineGapPx : 0);
+    y = (height - block) / 2;
+    for (size_t i = 0; i < n; ++i) {
+      drawBandText(right_x, y, lines[i], radar::kColorTagType);
+      y += line_h + radar::kBandLineGapPx;
+    }
+  }
+  tft.setTextDatum(textdatum_t::top_left);
+}
+
 struct AircraftDrawItem {
   size_t index = 0;
   int x = 0;
@@ -779,6 +962,9 @@ bool ensureFrameSprite() {
     return true;
   }
   s_frame.setColorDepth(16);
+  // Prefer PSRAM where present (S3: the 320x320 sprite is ~200 KB); the C3 has none
+  // and falls back to internal RAM.
+  s_frame.setPsram(true);
   if (!s_frame.createSprite(radar::kSize, radar::kSize)) {
     Serial.println("radar: frame sprite alloc failed");
     return false;
@@ -790,14 +976,19 @@ bool ensureFrameSprite() {
 // Double-buffered frame: composite the grid AND aircraft into the off-screen
 // sprite, then blit it to the panel in a single pushSprite. Because the panel
 // is updated in one pass, labels never show an erase/redraw gap — no flicker.
-void renderFrame() {
+void renderFrame(bool force_bands) {
   drawStaticGrid(s_frame);  // opens its own DrawScope(s_frame)
   {
     const DrawScope scope(s_frame);
     drawAircraft();
-    drawFooter();
+    if (!radar::kSideBands) {
+      drawFooter();
+    }
   }
-  s_frame.pushSprite(0, 0);
+  s_frame.pushSprite(radar::kRadarOriginX, radar::kRadarOriginY);
+  if (radar::kSideBands) {
+    drawSideBands(force_bands);
+  }
   tft.setTextDatum(textdatum_t::top_left);
 }
 
@@ -808,7 +999,7 @@ void radarDisplayDraw() {
   initLabelMetrics();
 
   if (ensureFrameSprite()) {
-    renderFrame();
+    renderFrame(true);
     return;
   }
 
@@ -824,7 +1015,7 @@ void radarDisplayRefreshAircraft() {
   initPalette();
 
   if (ensureFrameSprite()) {
-    renderFrame();
+    renderFrame(false);
     return;
   }
 

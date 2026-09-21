@@ -9,4 +9,9 @@ namespace sim {
 /** Replace the aircraft list the UI reads (copied, clamped to kMaxAircraft). */
 void setAircraft(const services::adsb::Aircraft* list, size_t count);
 
+/** Fake footer data; the strings use the firmware's formats. */
+void setWeatherLine(const char* text);
+void setDateTimeLine(const char* text);
+void setTextScalePercent(int percent);
+
 }  // namespace sim

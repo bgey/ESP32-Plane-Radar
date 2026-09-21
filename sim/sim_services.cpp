@@ -13,9 +13,18 @@
 namespace {
 services::adsb::Aircraft g_aircraft[services::adsb::kMaxAircraft];
 size_t g_aircraft_count = 0;
+char g_weather[32] = "PARTLY CLOUDY 16C RH62%";
+char g_date_time[20] = "20:30 20 SEP";
+int g_text_scale = 110;
 }  // namespace
 
 namespace sim {
+void setWeatherLine(const char* text) { std::snprintf(g_weather, sizeof(g_weather), "%s", text); }
+void setDateTimeLine(const char* text) {
+  std::snprintf(g_date_time, sizeof(g_date_time), "%s", text);
+}
+void setTextScalePercent(int percent) { g_text_scale = percent; }
+
 void setAircraft(const services::adsb::Aircraft* list, size_t count) {
   if (count > services::adsb::kMaxAircraft) {
     count = services::adsb::kMaxAircraft;
@@ -38,14 +47,14 @@ double lon() { return config::kDefaultRadarLon; }
 namespace services::settings {
 bool footerEnabled() { return true; }
 bool weatherEnabled() { return true; }
-int textScalePercent() { return kTextScaleDefaultPercent; }
+int textScalePercent() { return g_text_scale; }
 }  // namespace services::settings
 
 namespace services::weather {
 void formatWeatherLine(char* out, size_t out_len) {
-  std::snprintf(out, out_len, "PARTLY CLOUDY 16C RH62%%");
+  std::snprintf(out, out_len, "%s", g_weather);
 }
 void formatDateTimeLine(char* out, size_t out_len) {
-  std::snprintf(out, out_len, "20:30 20 SEP");
+  std::snprintf(out, out_len, "%s", g_date_time);
 }
 }  // namespace services::weather

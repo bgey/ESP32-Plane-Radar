@@ -162,12 +162,19 @@ int main(int argc, char** argv) {
       g_opts.planes = std::atoi(argv[++i]);
     } else if (std::strcmp(a, "--seed") == 0 && i + 1 < argc) {
       g_opts.seed = static_cast<unsigned>(std::atoi(argv[++i]));
+    } else if (std::strcmp(a, "--weather") == 0 && i + 1 < argc) {
+      sim::setWeatherLine(argv[++i]);
+    } else if (std::strcmp(a, "--time") == 0 && i + 1 < argc) {
+      sim::setDateTimeLine(argv[++i]);
+    } else if (std::strcmp(a, "--textscale") == 0 && i + 1 < argc) {
+      sim::setTextScalePercent(std::atoi(argv[++i]));
     } else if (std::strcmp(a, "--rotation") == 0 && i + 1 < argc) {
       g_opts.rotation = std::atoi(argv[++i]) & 1;
     } else {
       std::fprintf(stderr,
                    "usage: %s [--out file.png] [--range 0-3] [--planes N] "
-                   "[--seed N] [--rotation 0|1] [--window]\n",
+                   "[--seed N] [--rotation 0|1] [--weather TEXT] [--time TEXT] "
+                   "[--textscale 80-130] [--window]\n",
                    argv[0]);
       return 2;
     }
