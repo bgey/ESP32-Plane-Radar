@@ -648,8 +648,8 @@ void drawBandText(int band_x, int y, const char* text, uint16_t color) {
 }
 
 /**
- * Clock (left) and weather (right) beside the round radar. Drawn straight to
- * the panel and only when the text changes, so it costs nothing per frame.
+ * Clock and weather in the panel right of the radar. Drawn straight to the
+ * display and only when the text changes, so it costs nothing per frame.
  */
 void drawSideBands(bool force) {
   const bool enabled = services::settings::footerEnabled();
@@ -688,16 +688,14 @@ void drawSideBands(bool force) {
   const DrawScope scope(tft);
   displayFontEnsureLoaded(tft);
   const int height = config::kDisplayHeight;
-  const int right_x = config::kDisplayWidth - radar::kBandWidthPx;
+  const int panel_x = radar::kRadarOriginX + radar::kSize;
   const uint16_t fill =
       enabled ? radar::kColorFooterBackground : radar::kColorBackground;
-  tft.fillRect(0, 0, radar::kBandWidthPx, height, fill);
-  tft.fillRect(right_x, 0, radar::kBandWidthPx, height, fill);
+  tft.fillRect(panel_x, 0, radar::kBandWidthPx, height, fill);
   if (!enabled) {
     return;
   }
-  tft.drawFastVLine(radar::kBandWidthPx - 1, 0, height, radar::kColorGrid);
-  tft.drawFastVLine(right_x, 0, height, radar::kColorGrid);
+  tft.drawFastVLine(panel_x, 0, height, radar::kColorGrid);
 
   const int max_w = radar::kBandWidthPx - 2 * radar::kBandPadPx;
 
@@ -711,14 +709,16 @@ void drawSideBands(bool force) {
   const int date_h = tft.fontHeight();
   const int date_block =
       date_text[0] != '\0' ? radar::kBandLineGapPx + date_h : 0;
-  int y = (height - (time_h + date_block)) / 2;
+  // Top-aligned; the space below is reserved for touch controls.
+  int y = radar::kBandTopPx;
   applyBandStyle(true, time_fit);
-  drawBandText(0, y, time_text, radar::kColorTagAltitude);
+  drawBandText(panel_x, y, time_text, radar::kColorTagAltitude);
   if (date_text[0] != '\0') {
     applyBandStyle(false, date_fit);
-    drawBandText(0, y + time_h + radar::kBandLineGapPx, date_text,
+    drawBandText(panel_x, y + time_h + radar::kBandLineGapPx, date_text,
                  radar::kColorTagAltitude);
   }
+  y += time_h + date_block + radar::kBandSectionGapPx;
 
   if (weather[0] != '\0') {
     applyBandStyle(false);
@@ -730,12 +730,8 @@ void drawSideBands(bool force) {
     }
     applyBandStyle(false, bandFitFactor(widest, max_w));
     const int line_h = tft.fontHeight();
-    const int block =
-        static_cast<int>(n) * line_h +
-        (n > 0 ? static_cast<int>(n - 1) * radar::kBandLineGapPx : 0);
-    y = (height - block) / 2;
     for (size_t i = 0; i < n; ++i) {
-      drawBandText(right_x, y, lines[i], radar::kColorTagType);
+      drawBandText(panel_x, y, lines[i], radar::kColorTagType);
       y += line_h + radar::kBandLineGapPx;
     }
   }

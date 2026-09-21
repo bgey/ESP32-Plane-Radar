@@ -17,8 +17,8 @@ constexpr bool kSideBands = false;
 constexpr int kCenterX = kSize / 2;
 constexpr int kCenterY = kSize / 2;
 
-/** Top-left of the radar square on the panel. */
-constexpr int kRadarOriginX = (config::kDisplayWidth - kSize) / 2;
+/** Top-left of the radar square on the panel (left edge, full height). */
+constexpr int kRadarOriginX = 0;
 constexpr int kRadarOriginY = (config::kDisplayHeight - kSize) / 2;
 
 /** Outermost grid ring (inside edge labels). */
@@ -105,12 +105,17 @@ constexpr int kFooterTimeY = 216;
 constexpr int kFooterTimeOnlyY = 205;
 constexpr int kFooterLabelHeightPx = 13;
 
-/** Side bands (kSideBands == true): clock on the left, weather on the right. */
-constexpr int kBandWidthPx = kRadarOriginX;
-constexpr int kBandPadPx = 5;
-constexpr int kBandTimeHeightPx = 24;
-constexpr int kBandLineHeightPx = 15;
+/**
+ * Info panel right of the radar (kSideBands == true): clock and weather stacked
+ * at the top, the rest left free for touch controls.
+ */
+constexpr int kBandWidthPx = config::kDisplayWidth - kRadarOriginX - kSize;
+constexpr int kBandPadPx = 8;
+constexpr int kBandTopPx = 10;
+constexpr int kBandTimeHeightPx = 18;
+constexpr int kBandLineHeightPx = 12;
 constexpr int kBandLineGapPx = 3;
+constexpr int kBandSectionGapPx = 10;
 
 /** RGB565 palette targets (applied in initPalette). */
 constexpr uint8_t kBgR = 4;
