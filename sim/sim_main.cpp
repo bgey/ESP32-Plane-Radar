@@ -27,6 +27,7 @@ struct Options {
   int range = 1;
   int planes = 12;
   unsigned seed = 1;
+  int rotation = -1;  // -1 = use config::kDisplayRotation
   bool window = false;
 };
 
@@ -110,6 +111,9 @@ bool savePng(const char* path) {
 
 int userFunc(bool* running) {
   displayInit();
+  if (g_opts.rotation >= 0) {
+    tft.setRotation(g_opts.rotation);
+  }
   ui::radar::rangeInit();
   for (int i = 0; i < g_opts.range; ++i) {
     ui::radar::rangeNext();
@@ -117,9 +121,15 @@ int userFunc(bool* running) {
   makeAircraft(ui::radar::rangeCurrent().outer_km);
   ui::radarDisplayDraw();
   ui::radarDisplayRefreshAircraft();
-  savePng(g_opts.out);
+  const bool saved = savePng(g_opts.out);
 
-  while (g_opts.window && *running) {
+  if (!g_opts.window) {
+    // Panel_sdl::main() would otherwise wait for a window-close event forever.
+    std::fflush(stdout);
+    std::_Exit(saved ? 0 : 1);
+  }
+
+  while (*running) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     advanceAircraft(0.5f);
     ui::radarDisplayRefreshAircraft();
@@ -142,10 +152,12 @@ int main(int argc, char** argv) {
       g_opts.planes = std::atoi(argv[++i]);
     } else if (std::strcmp(a, "--seed") == 0 && i + 1 < argc) {
       g_opts.seed = static_cast<unsigned>(std::atoi(argv[++i]));
+    } else if (std::strcmp(a, "--rotation") == 0 && i + 1 < argc) {
+      g_opts.rotation = std::atoi(argv[++i]) & 3;
     } else {
       std::fprintf(stderr,
                    "usage: %s [--out file.png] [--range 0-3] [--planes N] "
-                   "[--seed N] [--window]\n",
+                   "[--seed N] [--rotation 0-3] [--window]\n",
                    argv[0]);
       return 2;
     }
