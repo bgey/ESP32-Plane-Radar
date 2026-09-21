@@ -29,6 +29,11 @@ sim/build/radar_sim --out sim/out/tap.png --tap 345,297 --tap 455,297
 # on rows at y = 66 + 38*row. Example: open settings, go to ALERTS, raise the altitude
 sim/build/radar_sim --out sim/out/settings.png --tap 400,257 --tap 170,22 --tap 446,104
 
+# LOCATION tab at (276,22): SAVE the current position (439,64), name it on the keyboard
+# (name field 300,76), then SAVE & USE (240,258). Favourites live in the simulated
+# NVS for one run only.
+sim/build/radar_sim --out sim/out/location.png --tap 400,257 --tap 276,22 --tap 439,64
+
 # Live window (WSLg on Windows 11): aircraft drift at 20x speed, and mouse
 # clicks act as touch, so the range control works
 sim/build/radar_sim --window

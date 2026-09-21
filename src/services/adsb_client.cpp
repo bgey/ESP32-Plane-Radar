@@ -538,6 +538,8 @@ size_t aircraftCount() { return s_aircraft_count; }
 
 const Aircraft* aircraftList() { return s_aircraft; }
 
+void clearAircraft() { s_aircraft_count = 0; }
+
 bool fetchUpdate(double center_lat, double center_lon, float fetch_radius_km) {
   s_last_center_lat = center_lat;
   s_last_center_lon = center_lon;

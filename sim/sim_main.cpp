@@ -150,7 +150,7 @@ struct Tap {
   int x;
   int y;
 };
-constexpr size_t kMaxTaps = 16;
+constexpr size_t kMaxTaps = 64;
 Tap g_taps[kMaxTaps];
 size_t g_tap_count = 0;
 

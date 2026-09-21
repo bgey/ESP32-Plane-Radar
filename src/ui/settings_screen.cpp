@@ -10,6 +10,7 @@
 #include "hardware/display_font.h"
 #include "services/display_settings.h"
 #include "services/traffic_alert.h"
+#include "ui/location_settings.h"
 #include "ui/radar_range.h"
 #include "ui/radar_theme.h"
 
@@ -56,6 +57,8 @@ struct Page {
   const char* title;
   const Row* rows;
   size_t count;
+  /** Drawn and handled by location_settings instead of the generic rows. */
+  bool location;
 };
 
 // ---- Setting accessors ----------------------------------------------------
@@ -146,8 +149,9 @@ const Row kAlertRows[] = {
 };
 
 const Page kPages[] = {
-    {"GENERAL", kGeneralRows, sizeof(kGeneralRows) / sizeof(kGeneralRows[0])},
-    {"ALERTS", kAlertRows, sizeof(kAlertRows) / sizeof(kAlertRows[0])},
+    {"GENERAL", kGeneralRows, sizeof(kGeneralRows) / sizeof(kGeneralRows[0]), false},
+    {"ALERTS", kAlertRows, sizeof(kAlertRows) / sizeof(kAlertRows[0]), false},
+    {"LOCATION", nullptr, 0, true},
 };
 constexpr int kPageCount = sizeof(kPages) / sizeof(kPages[0]);
 
@@ -347,6 +351,9 @@ void drawAll() {
   for (size_t i = 0; i < kPages[s_page].count; ++i) {
     drawRow(static_cast<int>(i));
   }
+  if (kPages[s_page].location) {
+    locationTabDraw(kRowsTop);
+  }
   tft.endWrite();
 }
 
@@ -406,8 +413,21 @@ void settingsScreenOpen() {
 
 bool settingsScreenActive() { return s_active; }
 
+bool settingsScreenTakeLocationChanged() { return locationTakeChanged(); }
+
 bool settingsScreenPoll() {
   if (!s_active) {
+    return false;
+  }
+
+  // The place editor and its input pads cover the whole screen.
+  if (locationModalActive()) {
+    locationModalPoll();
+    if (!locationModalActive()) {
+      s_down = false;
+      s_pressed = Hit{};
+      drawAll();
+    }
     return false;
   }
 
@@ -416,6 +436,13 @@ bool settingsScreenPoll() {
   const bool down = tft.getTouch(&x, &y);
   const unsigned long now = millis();
   bool closed = false;
+
+  if (kPages[s_page].location) {
+    locationTabTouch(down && y >= kHeaderH, x, y);
+    if (locationModalActive()) {
+      return false;  // a touch on the tab just opened the editor
+    }
+  }
 
   if (down) {
     const Hit hit = hitTest(x, y);

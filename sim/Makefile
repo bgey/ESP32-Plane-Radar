@@ -19,7 +19,7 @@ LDLIBS   := $(shell sdl2-config --libs) -lpthread
 APP_SRC := $(wildcard $(ROOT)/src/ui/*.cpp) \
   $(ROOT)/src/hardware/display.cpp $(ROOT)/src/hardware/display_font.cpp \
   $(ROOT)/src/hardware/touch_calibration.cpp \
-  $(ROOT)/src/data/large_airports_data.cpp $(ROOT)/src/services/traffic_alert.cpp \
+  $(ROOT)/src/data/large_airports_data.cpp $(ROOT)/src/services/traffic_alert.cpp $(ROOT)/src/services/radar_location.cpp \
   $(ROOT)/sim/sim_main.cpp $(ROOT)/sim/sim_services.cpp
 
 LGFX_CPP := $(wildcard $(LGFX)/lgfx/v1/*.cpp) \

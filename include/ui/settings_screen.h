@@ -18,4 +18,10 @@ bool settingsScreenActive();
  */
 bool settingsScreenPoll();
 
+/**
+ * True once after the radar position was changed from the LOCATION tab. The
+ * caller should then drop stale aircraft and refetch for the new position.
+ */
+bool settingsScreenTakeLocationChanged();
+
 }  // namespace ui

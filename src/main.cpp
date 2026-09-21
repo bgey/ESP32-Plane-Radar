@@ -75,6 +75,16 @@ void handleTouch() {
 }
 
 void closeSettings() {
+  if (ui::settingsScreenTakeLocationChanged()) {
+    // The old aircraft belong to the previous position: drop them, fetch for the
+    // new one right away and refresh the weather there.
+    services::adsb::clearAircraft();
+    g_last_adsb_fetch_ms = 0;
+    if (WiFi.status() == WL_CONNECTED) {
+      services::weather::refreshIfDue(services::location::lat(),
+                                      services::location::lon(), true);
+    }
+  }
   // Thresholds may have changed, so re-evaluate before repainting.
   services::alert::update(services::location::lat(), services::location::lon());
   if (WiFi.status() == WL_CONNECTED) {

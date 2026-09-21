@@ -13,18 +13,13 @@
 namespace {
 services::adsb::Aircraft g_aircraft[services::adsb::kMaxAircraft];
 size_t g_aircraft_count = 0;
-double g_center_lat = config::kDefaultRadarLat;
-double g_center_lon = config::kDefaultRadarLon;
 char g_weather[32] = "PARTLY CLOUDY 16C RH62%";
 char g_date_time[20] = "20:30 20 SEP";
 int g_text_scale = 110;
 }  // namespace
 
 namespace sim {
-void setCenter(double lat, double lon) {
-  g_center_lat = lat;
-  g_center_lon = lon;
-}
+void setCenter(double lat, double lon) { services::location::setPosition(lat, lon); }
 void setWeatherLine(const char* text) { std::snprintf(g_weather, sizeof(g_weather), "%s", text); }
 void setDateTimeLine(const char* text) {
   std::snprintf(g_date_time, sizeof(g_date_time), "%s", text);
@@ -43,12 +38,8 @@ void setAircraft(const services::adsb::Aircraft* list, size_t count) {
 namespace services::adsb {
 size_t aircraftCount() { return g_aircraft_count; }
 const Aircraft* aircraftList() { return g_aircraft; }
+void clearAircraft() { g_aircraft_count = 0; }
 }  // namespace services::adsb
-
-namespace services::location {
-double lat() { return g_center_lat; }
-double lon() { return g_center_lon; }
-}  // namespace services::location
 
 namespace services::settings {
 namespace {

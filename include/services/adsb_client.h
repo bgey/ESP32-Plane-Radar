@@ -30,6 +30,9 @@ constexpr size_t kMaxAircraft = 64;
 size_t aircraftCount();
 const Aircraft* aircraftList();
 
+/** Forget the current aircraft (e.g. after the radar position changed). */
+void clearAircraft();
+
 /** Hook invoked during long HTTP I/O (e.g. wifiLoop). Optional. */
 using PollFn = void (*)();
 void setPollFn(PollFn fn);
