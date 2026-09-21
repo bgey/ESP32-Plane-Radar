@@ -5,7 +5,27 @@
 
 #include "config.h"
 
-#if defined(PLANE_RADAR_TARGET_S3_ST7796)
+#if defined(PLANE_RADAR_SIM)
+
+/** Desktop simulator: SDL window (or headless dummy video driver). */
+class LGFX : public lgfx::LGFX_Device {
+  lgfx::Panel_sdl _panel;
+
+public:
+  LGFX() {
+    auto cfg = _panel.config();
+    // Same native portrait geometry as the ST7796S; setRotation() gives landscape.
+    cfg.memory_width = 320;
+    cfg.memory_height = 480;
+    cfg.panel_width = 320;
+    cfg.panel_height = 480;
+    _panel.config(cfg);
+    _panel.setScaling(1, 1);
+    setPanel(&_panel);
+  }
+};
+
+#elif defined(PLANE_RADAR_TARGET_S3_ST7796)
 
 /**
  * LovyanGFX device: ST7796S on SPI, XPT2046 touch on the same bus.
