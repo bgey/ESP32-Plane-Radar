@@ -18,6 +18,8 @@
 #include "services/radar_location.h"
 #include "sim_api.h"
 #include "ui/radar_display.h"
+#include "services/traffic_alert.h"
+#include "ui/alert_banner.h"
 #include "ui/radar_range.h"
 #include "ui/touch_controls.h"
 
@@ -29,6 +31,8 @@ struct Options {
   int planes = 12;
   unsigned seed = 1;
   int rotation = -1;  // -1 = use config::kDisplayRotation
+  bool inbound = false;
+  int inbound_alt_ft = 2600;
   bool window = false;
 };
 
@@ -74,8 +78,34 @@ void makeAircraft(float outer_km) {
     std::snprintf(ac.type, sizeof(ac.type), "%s", kTypes[k]);
     const int alt_ft = 3000 + static_cast<int>(uni(rng) * 36000) % 40000;
     std::snprintf(ac.alt, sizeof(ac.alt), "%d ft", alt_ft);
+    ac.has_alt = true;
+    ac.alt_ft = static_cast<float>(alt_ft);
+    ac.has_vrate = true;
+    ac.vrate_fpm = 0.0f;
+  }
+
+  if (g_opts.inbound && g_plane_count < services::adsb::kMaxAircraft) {
+    // Low aircraft 4.5 km out (bearing 250) flying straight at the radar position.
+    services::adsb::Aircraft& ac = g_planes[g_plane_count++];
+    std::memset(&ac, 0, sizeof(ac));
+    const float bearing = 250.0f * kPi / 180.0f;
+    ac.lat = static_cast<float>(lat0 + (4.5f * std::cos(bearing)) / kKmPerDegLat);
+    ac.lon = static_cast<float>(lon0 + (4.5f * std::sin(bearing)) / km_per_deg_lon);
+    ac.track_deg = 70.0f;
+    ac.nose_deg = 70.0f;
+    ac.gs_knots = 180.0f;
+    std::snprintf(ac.hex, sizeof(ac.hex), "%s", "48LOW1");
+    std::snprintf(ac.callsign, sizeof(ac.callsign), "%s", "TRA6LOW");
+    std::snprintf(ac.type, sizeof(ac.type), "%s", "B738");
+    std::snprintf(ac.alt, sizeof(ac.alt), "%d ft", g_opts.inbound_alt_ft);
+    ac.has_alt = true;
+    ac.alt_ft = static_cast<float>(g_opts.inbound_alt_ft);
+    ac.has_vrate = true;
+    ac.vrate_fpm = -500.0f;
   }
   sim::setAircraft(g_planes, g_plane_count);
+  services::alert::update(lat0, lon0);
+  std::printf("planes=%zu alerts=%zu\n", g_plane_count, services::alert::count());
 }
 
 void advanceAircraft(float dt_s) {
@@ -87,8 +117,13 @@ void advanceAircraft(float dt_s) {
     const float t = ac.track_deg * kPi / 180.0f;
     ac.lat += static_cast<float>(km * std::cos(t) / kKmPerDegLat);
     ac.lon += static_cast<float>(km * std::sin(t) / km_per_deg_lon);
+    if (ac.has_vrate) {
+      ac.alt_ft += ac.vrate_fpm * dt_s * 20.0f / 60.0f;
+      std::snprintf(ac.alt, sizeof(ac.alt), "%d ft", static_cast<int>(ac.alt_ft));
+    }
   }
   sim::setAircraft(g_planes, g_plane_count);
+  services::alert::update(lat0, services::location::lon());
 }
 
 bool savePng(const char* path) {
@@ -186,12 +221,18 @@ int userFunc(bool* running) {
   }
 
   unsigned long last_move_ms = millis();
+  size_t last_alerts = services::alert::count();
   while (*running) {
     pumpTouch(20);
+    ui::alertBannerTick();
     if (millis() - last_move_ms >= 500) {
       last_move_ms = millis();
       advanceAircraft(0.5f);
       ui::radarDisplayRefreshAircraft();
+      if (services::alert::count() != last_alerts) {
+        last_alerts = services::alert::count();
+        std::printf("alerts -> %zu\n", last_alerts);
+      }
     }
   }
   return 0;
@@ -204,6 +245,10 @@ int main(int argc, char** argv) {
     const char* a = argv[i];
     if (std::strcmp(a, "--window") == 0) {
       g_opts.window = true;
+    } else if (std::strcmp(a, "--inbound") == 0) {
+      g_opts.inbound = true;
+    } else if (std::strcmp(a, "--inbound-alt") == 0 && i + 1 < argc) {
+      g_opts.inbound_alt_ft = std::atoi(argv[++i]);
     } else if (std::strcmp(a, "--out") == 0 && i + 1 < argc) {
       g_opts.out = argv[++i];
     } else if (std::strcmp(a, "--range") == 0 && i + 1 < argc) {
@@ -232,7 +277,7 @@ int main(int argc, char** argv) {
       std::fprintf(stderr,
                    "usage: %s [--out file.png] [--range 0-3] [--planes N] "
                    "[--seed N] [--rotation 0|1] [--weather TEXT] [--time TEXT] "
-                   "[--textscale 80-130] [--tap X,Y]... [--window]\n",
+                   "[--textscale 80-130] [--tap X,Y]... [--inbound] [--inbound-alt FT] [--window]\n",
                    argv[0]);
       return 2;
     }

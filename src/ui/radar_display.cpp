@@ -14,9 +14,11 @@
 #include "services/adsb_client.h"
 #include "services/display_settings.h"
 #include "services/radar_location.h"
+#include "services/traffic_alert.h"
 #include "services/weather_time.h"
 #include "ui/radar_range.h"
 #include "ui/radar_theme.h"
+#include "ui/alert_banner.h"
 #include "ui/runway_overlay.h"
 #include "ui/touch_controls.h"
 
@@ -36,6 +38,9 @@ uint16_t kColorTagAltitude = 0xFFE0;
 uint16_t kColorRunway = 0x4D5F;
 uint16_t kColorRunwayLabel = 0x7DFF;
 uint16_t kColorFooterBackground = 0x0084;
+uint16_t kColorAlertRing = 0xFFE0;
+uint16_t kColorAlertDark = 0x8000;
+uint16_t kColorAlertBright = 0xF800;
 
 }  // namespace radar
 
@@ -228,6 +233,12 @@ void initPalette() {
                                           radar::kRunwayLabelB);
   radar::kColorFooterBackground =
       tft.color565(radar::kFooterBgR, radar::kFooterBgG, radar::kFooterBgB);
+  radar::kColorAlertRing = tft.color565(radar::kAlertRingR, radar::kAlertRingG,
+                                        radar::kAlertRingB);
+  radar::kColorAlertDark = tft.color565(radar::kAlertDarkR, radar::kAlertDarkG,
+                                        radar::kAlertDarkB);
+  radar::kColorAlertBright = tft.color565(
+      radar::kAlertBrightR, radar::kAlertBrightG, radar::kAlertBrightB);
 }
 
 constexpr float kKmPerDeg = 111.0f;
@@ -749,10 +760,17 @@ struct AircraftDrawItem {
 };
 
 struct BeyondDotDrawItem {
+  size_t index = 0;
   int x = 0;
   int y = 0;
   int dist_sq = 0;
 };
+
+void drawAlertRing(int x, int y, int radius) {
+  for (int i = 0; i < 3; ++i) {
+    s_draw->drawCircle(x, y, radius - i, radar::kColorAlertRing);
+  }
+}
 
 void sortDrawItemsFarFirst(AircraftDrawItem* items, size_t count) {
   for (size_t i = 1; i < count; ++i) {
@@ -813,6 +831,7 @@ void drawAircraft() {
                                      &dot_y)) {
       continue;
     }
+    dots[dot_count].index = i;
     dots[dot_count].x = dot_x;
     dots[dot_count].y = dot_y;
     dots[dot_count].dist_sq = distSqFromCenter(dot_x, dot_y);
@@ -822,6 +841,9 @@ void drawAircraft() {
   sortBeyondDotsFarFirst(dots, dot_count);
   for (size_t d = 0; d < dot_count; ++d) {
     drawBeyondRingDot(dots[d].x, dots[d].y);
+    if (services::alert::isAlerting(planes[dots[d].index])) {
+      drawAlertRing(dots[d].x, dots[d].y, radar::kBeyondRingDotRadiusPx + 6);
+    }
   }
 
   sortDrawItemsFarFirst(items, draw_count);
@@ -832,6 +854,9 @@ void drawAircraft() {
     drawSpeedVector(x, y, planes[i].nose_deg, planes[i].track_deg,
                     planes[i].gs_knots, radar::kColorTrackVector);
     drawHeadingTriangle(x, y, planes[i].nose_deg, radar::kColorAircraft);
+    if (services::alert::isAlerting(planes[i])) {
+      drawAlertRing(x, y, radar::kAlertRingRadiusPx);
+    }
   }
   for (size_t d = 0; d < draw_count; ++d) {
     const size_t i = items[d].index;
@@ -987,6 +1012,7 @@ void renderFrame(bool force_bands) {
   s_frame.pushSprite(radar::kRadarOriginX, radar::kRadarOriginY);
   if (radar::kSideBands) {
     const bool repainted = drawSideBands(force_bands);
+    alertBannerDraw(repainted);
     touchControlsDraw(repainted);
   }
   tft.setTextDatum(textdatum_t::top_left);

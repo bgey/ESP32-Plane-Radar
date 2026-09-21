@@ -32,7 +32,9 @@ sim/build/radar_sim --window
 Options: `--range N` (number of range-button presses from the default 10 km preset),
 `--planes N`, `--seed N`, `--weather TEXT`, `--time TEXT` (firmware formats, e.g.
 `'PARTLY CLOUDY 16C RH62%'`, `'8:05A 1 JAN'`), `--textscale 80-130`,
-`--tap X,Y` (repeatable; window pixel coordinates), `--rotation 0|1`
+`--tap X,Y` (repeatable; window pixel coordinates), `--inbound` (adds a low aircraft
+flying straight at the radar position to trigger the low-flyer alert) with
+`--inbound-alt FT` (default 2600), `--rotation 0|1`
 (0 = portrait 320x480, 1 = landscape 480x320, the firmware default; the window is
 sized to match; 180-degree flips are not simulated), `--out FILE`, `--window`.
 

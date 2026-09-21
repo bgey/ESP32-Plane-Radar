@@ -9,7 +9,7 @@ LGFX  := $(ROOT)/.pio/libdeps/s3mini/LovyanGFX/src
 BUILD := $(ROOT)/sim/build
 BIN   := $(BUILD)/radar_sim
 
-CXXFLAGS := -std=gnu++17 -O1 -g -pthread -Wno-psabi \
+CXXFLAGS := -std=gnu++17 -O1 -g -pthread -Wno-psabi -MMD -MP \
   -DPLANE_RADAR_SIM -DPLANE_RADAR_TARGET_S3_ST7796 -DLGFX_SDL \
   -I$(ROOT)/sim/stubs -I$(ROOT)/include -I$(ROOT)/sim -I$(LGFX) \
   $(shell sdl2-config --cflags)
@@ -18,7 +18,7 @@ LDLIBS   := $(shell sdl2-config --libs) -lpthread
 
 APP_SRC := $(wildcard $(ROOT)/src/ui/*.cpp) \
   $(ROOT)/src/hardware/display.cpp $(ROOT)/src/hardware/display_font.cpp \
-  $(ROOT)/src/data/large_airports_data.cpp \
+  $(ROOT)/src/data/large_airports_data.cpp $(ROOT)/src/services/traffic_alert.cpp \
   $(ROOT)/sim/sim_main.cpp $(ROOT)/sim/sim_services.cpp
 
 LGFX_CPP := $(wildcard $(LGFX)/lgfx/v1/*.cpp) \
@@ -38,6 +38,9 @@ OBJS := $(patsubst $(ROOT)/%.cpp,$(BUILD)/%.o,$(APP_SRC)) \
   $(BUILD)/ui_font.o
 
 all: $(BIN)
+
+# Rebuild objects when a header they include changes.
+-include $(OBJS:.o=.d)
 
 $(BIN): $(OBJS)
 	$(CXX) -o $@ $^ $(LDLIBS)

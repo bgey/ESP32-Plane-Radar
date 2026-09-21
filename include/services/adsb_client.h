@@ -17,6 +17,12 @@ struct Aircraft {
   /** Compact detailed model, for example "B737-800". */
   char type[18];
   char alt[12];
+  /** Barometric altitude in feet; only meaningful when has_alt. */
+  float alt_ft;
+  /** Vertical rate in ft/min (positive = climbing); only meaningful when has_vrate. */
+  float vrate_fpm;
+  bool has_alt;
+  bool has_vrate;
 };
 
 constexpr size_t kMaxAircraft = 64;

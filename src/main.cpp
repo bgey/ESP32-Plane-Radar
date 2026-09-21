@@ -11,8 +11,10 @@
 #include "services/display_settings.h"
 #include "services/ota_update.h"
 #include "services/radar_location.h"
+#include "services/traffic_alert.h"
 #include "services/weather_time.h"
 #include "services/wifi_setup.h"
+#include "ui/alert_banner.h"
 #include "ui/radar_display.h"
 #include "ui/radar_range.h"
 #include "ui/status_screens.h"
@@ -74,6 +76,7 @@ void fetchAndDrawAircraft() {
     handleBootButton();
     return;
   }
+  services::alert::update(services::location::lat(), services::location::lon());
   ui::radarDisplayRefreshAircraft();
   handleBootButton();
 }
@@ -105,6 +108,9 @@ void setup() {
 void loop() {
   handleBootButton();
   handleTouch();
+  if (g_radar_visible) {
+    ui::alertBannerTick();
+  }
   wifiLoop();
 
   if (services::ota::inProgress()) {

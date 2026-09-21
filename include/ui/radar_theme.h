@@ -83,6 +83,13 @@ constexpr int kAircraftLabelGapPx = 1;
 constexpr int kAircraftInsideRingInsetPx =
     kAircraftNoseLenPx + kAircraftTailHalfPx + 1;
 
+/** Ring drawn around an alerting aircraft (px radius, 3 px stroke). */
+#if defined(PLANE_RADAR_TARGET_S3_ST7796)
+constexpr int kAlertRingRadiusPx = 17;
+#else
+constexpr int kAlertRingRadiusPx = 13;
+#endif
+
 /** Beyond-ring traffic: bearing cues on screen rim (correct direction, fixed radius). */
 #if defined(PLANE_RADAR_TARGET_S3_ST7796)
 constexpr int kBeyondRingDotRadiusPx = 5;
@@ -146,6 +153,17 @@ constexpr uint8_t kRunwayLabelB = 230;
 constexpr uint8_t kFooterBgR = 3;
 constexpr uint8_t kFooterBgG = 16;
 constexpr uint8_t kFooterBgB = 32;
+/** Alert ring around a low, inbound aircraft (yellow: aircraft symbols are red). */
+constexpr uint8_t kAlertRingR = 255;
+constexpr uint8_t kAlertRingG = 220;
+constexpr uint8_t kAlertRingB = 0;
+/** Alert banner flashes between these two reds. */
+constexpr uint8_t kAlertDarkR = 90;
+constexpr uint8_t kAlertDarkG = 0;
+constexpr uint8_t kAlertDarkB = 0;
+constexpr uint8_t kAlertBrightR = 210;
+constexpr uint8_t kAlertBrightG = 0;
+constexpr uint8_t kAlertBrightB = 0;
 
 extern uint16_t kColorBackground;
 extern uint16_t kColorGrid;
@@ -158,5 +176,8 @@ extern uint16_t kColorTagAltitude;
 extern uint16_t kColorRunway;
 extern uint16_t kColorRunwayLabel;
 extern uint16_t kColorFooterBackground;
+extern uint16_t kColorAlertRing;
+extern uint16_t kColorAlertDark;
+extern uint16_t kColorAlertBright;
 
 }  // namespace ui::radar
