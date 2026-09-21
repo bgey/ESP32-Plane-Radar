@@ -16,6 +16,7 @@
 #include "ui/radar_display.h"
 #include "ui/radar_range.h"
 #include "ui/status_screens.h"
+#include "ui/touch_controls.h"
 
 namespace {
 
@@ -34,15 +35,28 @@ void showRadarIfConnected() {
   g_radar_visible = true;
 }
 
-void onRangeTap() {
-  ui::radar::rangeNext();
+void announceRange() {
   char range_label[12];
   ui::radar::formatCurrentRing3Label(range_label, sizeof(range_label));
   Serial.printf("Range: %s (outer ~%.0f km)\n", range_label,
                 ui::radar::rangeCurrent().outer_km);
+}
+
+void onRangeTap() {
+  ui::radar::rangeNext();
+  announceRange();
 
   if (g_radar_visible && WiFi.status() == WL_CONNECTED) {
     ui::radarDisplayDraw();
+  }
+}
+
+void handleTouch() {
+  if (g_radar_visible && ui::touchControlsPoll()) {
+    announceRange();
+    if (WiFi.status() == WL_CONNECTED) {
+      ui::radarDisplayDraw();
+    }
   }
 }
 
@@ -90,6 +104,7 @@ void setup() {
 
 void loop() {
   handleBootButton();
+  handleTouch();
   wifiLoop();
 
   if (services::ota::inProgress()) {

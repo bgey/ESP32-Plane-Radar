@@ -18,18 +18,26 @@ Smart App Control); use WSL2.
 ## Run
 
 ```bash
-# Headless: write a PNG
-SDL_VIDEODRIVER=dummy sim/build/radar_sim --out sim/out/radar.png --range 1 --planes 12
+# Headless (default): write a PNG and exit
+sim/build/radar_sim --out sim/out/radar.png --planes 12
 
-# Live window (WSLg on Windows 11), aircraft drift at 20x speed
+# Headless with scripted taps on the range control ([-] at ~x345, [+] at ~x455, y~297)
+sim/build/radar_sim --out sim/out/tap.png --tap 345,297 --tap 455,297
+
+# Live window (WSLg on Windows 11): aircraft drift at 20x speed, and mouse
+# clicks act as touch, so the range control works
 sim/build/radar_sim --window
 ```
 
 Options: `--range N` (number of range-button presses from the default 10 km preset),
 `--planes N`, `--seed N`, `--weather TEXT`, `--time TEXT` (firmware formats, e.g.
-`'PARTLY CLOUDY 16C RH62%'`, `'8:05A 1 JAN'`), `--textscale 80-130`, `--rotation 0|1`
+`'PARTLY CLOUDY 16C RH62%'`, `'8:05A 1 JAN'`), `--textscale 80-130`,
+`--tap X,Y` (repeatable; window pixel coordinates), `--rotation 0|1`
 (0 = portrait 320x480, 1 = landscape 480x320, the firmware default; the window is
 sized to match; 180-degree flips are not simulated), `--out FILE`, `--window`.
+
+The sim exercises the app's touch logic (hit-testing, redraws) but not the
+XPT2046 itself: calibration, axis mapping and noise only show up on the board.
 
 Stubs live in `sim/stubs` (Arduino `Serial`/`millis`, `Preferences`, `driver/gpio.h`);
 fake services (aircraft, weather, settings) are in `sim/sim_services.cpp`.

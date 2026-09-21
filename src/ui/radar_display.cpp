@@ -18,6 +18,7 @@
 #include "ui/radar_range.h"
 #include "ui/radar_theme.h"
 #include "ui/runway_overlay.h"
+#include "ui/touch_controls.h"
 
 namespace lgfx_fonts = lgfx::v1::fonts;
 
@@ -650,8 +651,9 @@ void drawBandText(int band_x, int y, const char* text, uint16_t color) {
 /**
  * Clock and weather in the panel right of the radar. Drawn straight to the
  * display and only when the text changes, so it costs nothing per frame.
+ * Returns true when the panel was repainted (anything drawn on it is gone).
  */
-void drawSideBands(bool force) {
+bool drawSideBands(bool force) {
   const bool enabled = services::settings::footerEnabled();
   char date_time[20] = {};
   char time_text[16] = {};
@@ -678,7 +680,7 @@ void drawSideBands(bool force) {
   if (!force && s_bands_valid && strcmp(time_text, s_band_time) == 0 &&
       strcmp(date_text, s_band_date) == 0 &&
       strcmp(weather, s_band_weather) == 0) {
-    return;
+    return false;
   }
   snprintf(s_band_time, sizeof(s_band_time), "%s", time_text);
   snprintf(s_band_date, sizeof(s_band_date), "%s", date_text);
@@ -693,7 +695,7 @@ void drawSideBands(bool force) {
       enabled ? radar::kColorFooterBackground : radar::kColorBackground;
   tft.fillRect(panel_x, 0, radar::kBandWidthPx, height, fill);
   if (!enabled) {
-    return;
+    return true;
   }
   tft.drawFastVLine(panel_x, 0, height, radar::kColorGrid);
 
@@ -736,6 +738,7 @@ void drawSideBands(bool force) {
     }
   }
   tft.setTextDatum(textdatum_t::top_left);
+  return true;
 }
 
 struct AircraftDrawItem {
@@ -983,7 +986,8 @@ void renderFrame(bool force_bands) {
   }
   s_frame.pushSprite(radar::kRadarOriginX, radar::kRadarOriginY);
   if (radar::kSideBands) {
-    drawSideBands(force_bands);
+    const bool repainted = drawSideBands(force_bands);
+    touchControlsDraw(repainted);
   }
   tft.setTextDatum(textdatum_t::top_left);
 }

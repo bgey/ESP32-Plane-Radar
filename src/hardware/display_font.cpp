@@ -47,6 +47,21 @@ bool displayFontEnsureLoaded(lgfx::LGFXBase& gfx) {
   return gfx.loadFont(vlwData(), lgfx::IFont::font_type_t::ft_vlw);
 }
 
+float displayFontSmoothSizeForHeight(lgfx::LGFXBase& gfx, int target_px) {
+  float lo = 0.25f;
+  float hi = 1.2f;
+  for (int i = 0; i < 16; ++i) {
+    const float mid = (lo + hi) * 0.5f;
+    gfx.setTextSize(mid);
+    if (gfx.fontHeight() < target_px) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return hi;
+}
+
 void displayFontSetSmoothSize(lgfx::LGFXBase& gfx, float size) {
   gfx.setTextSize(size);
 }

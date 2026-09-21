@@ -19,12 +19,13 @@
 #include "sim_api.h"
 #include "ui/radar_display.h"
 #include "ui/radar_range.h"
+#include "ui/touch_controls.h"
 
 namespace {
 
 struct Options {
   const char* out = "sim/out/radar.png";
-  int range = 1;
+  int range = 0;
   int planes = 12;
   unsigned seed = 1;
   int rotation = -1;  // -1 = use config::kDisplayRotation
@@ -109,6 +110,48 @@ bool savePng(const char* path) {
   return true;
 }
 
+struct Tap {
+  int x;
+  int y;
+};
+constexpr size_t kMaxTaps = 16;
+Tap g_taps[kMaxTaps];
+size_t g_tap_count = 0;
+
+/** Poll the touch controls for `ms` milliseconds, redrawing when the range changes. */
+void pumpTouch(int ms) {
+  for (int t = 0; t < ms; t += 10) {
+    if (ui::touchControlsPoll()) {
+      char label[12];
+      ui::radar::formatCurrentRing3Label(label, sizeof(label));
+      std::printf("range -> %s\n", label);
+      ui::radarDisplayDraw();
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+}
+
+/** Synthesise a left click at window pixel (x, y), as the SDL panel reads the mouse. */
+void injectTap(int x, int y) {
+  SDL_Window* window = SDL_GetWindowFromID(1);
+  if (window == nullptr) {
+    return;
+  }
+  SDL_WarpMouseInWindow(window, x, y);
+  pumpTouch(200);
+  SDL_Event ev{};
+  ev.type = SDL_MOUSEBUTTONDOWN;
+  ev.button.windowID = 1;
+  ev.button.button = SDL_BUTTON_LEFT;
+  ev.button.state = SDL_PRESSED;
+  SDL_PushEvent(&ev);
+  pumpTouch(300);
+  ev.type = SDL_MOUSEBUTTONUP;
+  ev.button.state = SDL_RELEASED;
+  SDL_PushEvent(&ev);
+  pumpTouch(300);
+}
+
 int userFunc(bool* running) {
   // The SDL window is sized once at init, so size it for the final orientation
   // and keep the panel itself at rotation 0 (the SDL panel does not flip 180 degrees).
@@ -124,6 +167,9 @@ int userFunc(bool* running) {
   makeAircraft(ui::radar::rangeCurrent().outer_km);
   ui::radarDisplayDraw();
   ui::radarDisplayRefreshAircraft();
+  for (size_t i = 0; i < g_tap_count; ++i) {
+    injectTap(g_taps[i].x, g_taps[i].y);
+  }
   const bool saved = savePng(g_opts.out);
 
   if (!g_opts.window) {
@@ -139,10 +185,14 @@ int userFunc(bool* running) {
     std::printf("window %dx%d, display %dx%d\n", ww, wh, tft.width(), tft.height());
   }
 
+  unsigned long last_move_ms = millis();
   while (*running) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    advanceAircraft(0.5f);
-    ui::radarDisplayRefreshAircraft();
+    pumpTouch(20);
+    if (millis() - last_move_ms >= 500) {
+      last_move_ms = millis();
+      advanceAircraft(0.5f);
+      ui::radarDisplayRefreshAircraft();
+    }
   }
   return 0;
 }
@@ -162,6 +212,14 @@ int main(int argc, char** argv) {
       g_opts.planes = std::atoi(argv[++i]);
     } else if (std::strcmp(a, "--seed") == 0 && i + 1 < argc) {
       g_opts.seed = static_cast<unsigned>(std::atoi(argv[++i]));
+    } else if (std::strcmp(a, "--tap") == 0 && i + 1 < argc) {
+      int tx = 0;
+      int ty = 0;
+      if (std::sscanf(argv[++i], "%d,%d", &tx, &ty) != 2 || g_tap_count >= kMaxTaps) {
+        std::fprintf(stderr, "bad --tap (use X,Y; max %zu)\n", kMaxTaps);
+        return 2;
+      }
+      g_taps[g_tap_count++] = {tx, ty};
     } else if (std::strcmp(a, "--weather") == 0 && i + 1 < argc) {
       sim::setWeatherLine(argv[++i]);
     } else if (std::strcmp(a, "--time") == 0 && i + 1 < argc) {
@@ -174,10 +232,16 @@ int main(int argc, char** argv) {
       std::fprintf(stderr,
                    "usage: %s [--out file.png] [--range 0-3] [--planes N] "
                    "[--seed N] [--rotation 0|1] [--weather TEXT] [--time TEXT] "
-                   "[--textscale 80-130] [--window]\n",
+                   "[--textscale 80-130] [--tap X,Y]... [--window]\n",
                    argv[0]);
       return 2;
     }
+  }
+  if (!g_opts.window) {
+    // The dummy video driver cannot create an accelerated renderer, which makes the
+    // panel open a new window on every update; the software renderer avoids that.
+    setenv("SDL_VIDEODRIVER", "dummy", 0);
+    setenv("SDL_RENDER_DRIVER", "software", 0);
   }
   return lgfx::Panel_sdl::main(userFunc);
 }
