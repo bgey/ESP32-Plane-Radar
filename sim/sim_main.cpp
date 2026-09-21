@@ -24,6 +24,7 @@
 #include "ui/radar_range.h"
 #include "ui/settings_screen.h"
 #include "ui/touch_controls.h"
+#include "ui/wifi_settings.h"
 
 namespace {
 
@@ -34,6 +35,7 @@ struct Options {
   unsigned seed = 1;
   int rotation = -1;  // -1 = use config::kDisplayRotation
   bool inbound = false;
+  bool wifi_boot = false;
   int inbound_alt_ft = 2600;
   bool window = false;
 };
@@ -155,9 +157,13 @@ Tap g_taps[kMaxTaps];
 size_t g_tap_count = 0;
 
 /** Poll the touch controls for `ms` milliseconds, redrawing when the range changes. */
+bool g_wifi_boot = false;  // boot Wi-Fi screen owns the touch panel
+
 void pumpTouch(int ms) {
   for (int t = 0; t < ms; t += 10) {
-    if (ui::settingsScreenActive()) {
+    if (g_wifi_boot) {
+      // nothing to poll: the boot screen's own loop reads the touch panel
+    } else if (ui::settingsScreenActive()) {
       if (ui::settingsScreenPoll()) {
         std::printf("settings closed\n");
         services::alert::update(services::location::lat(), services::location::lon());
@@ -230,6 +236,24 @@ int userFunc(bool* running) {
   displayInit();
   tft.setRotation(0);
   services::alert::init();
+
+  if (g_opts.wifi_boot) {
+    // Run the boot-time Wi-Fi screen on its own thread, drive it with the taps, and
+    // capture whatever it shows.
+    g_wifi_boot = true;
+    std::thread([] {
+      bool phone = false;
+      const bool ok = ui::wifiBootSetup(&phone, nullptr);
+      std::printf("wifi boot finished: %s\n", ok ? "connected" : (phone ? "phone setup" : "?"));
+    }).detach();
+    pumpTouch(200);
+    for (size_t i = 0; i < g_tap_count; ++i) {
+      injectTap(g_taps[i].x, g_taps[i].y);
+    }
+    savePng(g_opts.out);
+    std::fflush(stdout);
+    std::_Exit(0);
+  }
   ui::radar::rangeInit();
   for (int i = 0; i < g_opts.range; ++i) {
     ui::radar::rangeNext();
@@ -289,6 +313,8 @@ int main(int argc, char** argv) {
       center_lat = std::atof(argv[++i]);
     } else if (std::strcmp(a, "--lon") == 0 && i + 1 < argc) {
       center_lon = std::atof(argv[++i]);
+    } else if (std::strcmp(a, "--wifi-boot") == 0) {
+      g_opts.wifi_boot = true;
     } else if (std::strcmp(a, "--inbound") == 0) {
       g_opts.inbound = true;
     } else if (std::strcmp(a, "--inbound-alt") == 0 && i + 1 < argc) {

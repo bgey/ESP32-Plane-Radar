@@ -9,4 +9,11 @@ namespace ui {
  */
 void uiApplyFont(int height_px);
 
+/**
+ * Rounded button with a centred label (accent = green call-to-action fill). The
+ * caller wraps drawing in startWrite()/endWrite() when batching.
+ */
+void uiDrawButton(int x, int y, int w, int h, const char* label, int font_px,
+                  bool pressed, bool accent);
+
 }  // namespace ui

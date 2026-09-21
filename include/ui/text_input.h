@@ -21,8 +21,13 @@ InputResult numberPadPoll();
 /** The entered text; valid after kAccepted. */
 const char* numberPadText();
 
-/** Keyboard for free text up to max_len characters (at most 23). */
-void keyboardOpen(const char* title, const char* initial_text, size_t max_len);
+/**
+ * Keyboard for free text up to max_len characters (at most 64), with letters, digits
+ * and a symbols layer covering every printable ASCII character. With secret set the
+ * text is masked (a SHOW/HIDE button reveals it) and nothing is auto-capitalised.
+ */
+void keyboardOpen(const char* title, const char* initial_text, size_t max_len,
+                  bool secret = false);
 InputResult keyboardPoll();
 /** The entered text; valid after kAccepted. */
 const char* keyboardText();

@@ -19,6 +19,7 @@
 #include "services/radar_location.h"
 #include "ui/radar_range.h"
 #include "ui/status_screens.h"
+#include "ui/wifi_settings.h"
 
 portMUX_TYPE s_boot_mux = portMUX_INITIALIZER_UNLOCKED;
 volatile bool s_boot_tap_pending = false;
@@ -479,6 +480,17 @@ bool connectSavedNetwork(bool show_ui) {
   return tryConnectWithUi(ssid, pass, show_ui);
 }
 
+/**
+ * On-screen setup for devices with a touch display: pick a network and type its
+ * password. Returns true when connected. False means the user asked for the phone
+ * portal instead, or the device has no touch screen; the caller then opens it.
+ */
+bool onScreenSetup() {
+  stopLanWebPortal();
+  bool phone_requested = false;
+  return ui::wifiBootSetup(&phone_requested, bootButtonPollLongPress);
+}
+
 bool openConfigPortal() {
   stopLanWebPortal();
   WiFi.disconnect(true);
@@ -594,8 +606,8 @@ bool wifiSetupConnect() {
   }
 
   if (force_portal) {
-    Serial.println("Opening WiFi setup portal (after reset)");
-    if (openConfigPortal() && wifiLinkUp()) {
+    Serial.println("Opening WiFi setup (after reset)");
+    if ((onScreenSetup() || openConfigPortal()) && wifiLinkUp()) {
       WiFi.setAutoReconnect(true);
       Serial.printf("Connected: %s  IP %s\n", WiFi.SSID().c_str(),
                     WiFi.localIP().toString().c_str());
@@ -623,12 +635,12 @@ bool wifiSetupConnect() {
   }
 
   if (storedWifiCredentials()) {
-    Serial.println("Saved WiFi could not connect — opening setup portal");
+    Serial.println("Saved WiFi could not connect — opening WiFi setup");
   } else {
-    Serial.println("No saved WiFi — opening setup portal");
+    Serial.println("No saved WiFi — opening WiFi setup");
   }
 
-  if (openConfigPortal() && wifiLinkUp()) {
+  if ((onScreenSetup() || openConfigPortal()) && wifiLinkUp()) {
     WiFi.setAutoReconnect(true);
     Serial.printf("Connected: %s  IP %s\n", WiFi.SSID().c_str(),
                   WiFi.localIP().toString().c_str());

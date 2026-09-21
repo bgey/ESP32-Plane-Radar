@@ -12,6 +12,7 @@
 #include "services/traffic_alert.h"
 #include "ui/location_settings.h"
 #include "ui/radar_range.h"
+#include "ui/wifi_settings.h"
 #include "ui/radar_theme.h"
 
 namespace lgfx_fonts = lgfx::v1::fonts;
@@ -25,9 +26,9 @@ constexpr int kRowsTop = kHeaderH + 3;
 constexpr int kRowH = 38;
 constexpr int kMargin = 12;
 
-constexpr int kTabW = 110;
+constexpr int kTabW = 96;
 constexpr int kTabH = 34;
-constexpr int kDoneW = 92;
+constexpr int kDoneW = 78;
 
 constexpr int kToggleW = 60;
 constexpr int kToggleH = 26;
@@ -53,12 +54,14 @@ struct Row {
   void (*run)();
 };
 
+/** Pages that are drawn and handled by their own module instead of generic rows. */
+enum class Special { kNone, kLocation, kWifi };
+
 struct Page {
   const char* title;
   const Row* rows;
   size_t count;
-  /** Drawn and handled by location_settings instead of the generic rows. */
-  bool location;
+  Special special;
 };
 
 // ---- Setting accessors ----------------------------------------------------
@@ -73,20 +76,9 @@ void formatDistance(char* out, size_t n, float km) {
   }
 }
 
+// The 24-hour clock, temperature unit and distance unit are only editable on the
+// web setup page; they keep their defaults (24 h, Celsius, km) unless changed there.
 const Row kGeneralRows[] = {
-    {"24-hour clock", Kind::kToggle,
-     [] { return services::settings::use24HourClock(); },
-     [] { services::settings::setUse24HourClock(!services::settings::use24HourClock()); },
-     nullptr, nullptr, nullptr},
-    {"Temperature in F", Kind::kToggle,
-     [] { return services::settings::temperatureFahrenheit(); },
-     [] {
-       services::settings::setTemperatureFahrenheit(
-           !services::settings::temperatureFahrenheit());
-     },
-     nullptr, nullptr, nullptr},
-    {"Distances in miles", Kind::kToggle, [] { return radar::useMiles(); },
-     [] { radar::setUseMiles(!radar::useMiles()); }, nullptr, nullptr, nullptr},
     {"Show runways", Kind::kToggle, [] { return radar::showRunways(); },
      [] { radar::setShowRunways(!radar::showRunways()); }, nullptr, nullptr, nullptr},
     {"Clock and weather panel", Kind::kToggle,
@@ -149,9 +141,11 @@ const Row kAlertRows[] = {
 };
 
 const Page kPages[] = {
-    {"GENERAL", kGeneralRows, sizeof(kGeneralRows) / sizeof(kGeneralRows[0]), false},
-    {"ALERTS", kAlertRows, sizeof(kAlertRows) / sizeof(kAlertRows[0]), false},
-    {"LOCATION", nullptr, 0, true},
+    {"GENERAL", kGeneralRows, sizeof(kGeneralRows) / sizeof(kGeneralRows[0]),
+     Special::kNone},
+    {"ALERTS", kAlertRows, sizeof(kAlertRows) / sizeof(kAlertRows[0]), Special::kNone},
+    {"LOCATION", nullptr, 0, Special::kLocation},
+    {"WI-FI", nullptr, 0, Special::kWifi},
 };
 constexpr int kPageCount = sizeof(kPages) / sizeof(kPages[0]);
 
@@ -351,8 +345,10 @@ void drawAll() {
   for (size_t i = 0; i < kPages[s_page].count; ++i) {
     drawRow(static_cast<int>(i));
   }
-  if (kPages[s_page].location) {
+  if (kPages[s_page].special == Special::kLocation) {
     locationTabDraw(kRowsTop);
+  } else if (kPages[s_page].special == Special::kWifi) {
+    wifiTabDraw(kRowsTop);
   }
   tft.endWrite();
 }
@@ -420,10 +416,19 @@ bool settingsScreenPoll() {
     return false;
   }
 
-  // The place editor and its input pads cover the whole screen.
+  // The place editor, Wi-Fi connect screen and their input pads cover the whole screen.
   if (locationModalActive()) {
     locationModalPoll();
     if (!locationModalActive()) {
+      s_down = false;
+      s_pressed = Hit{};
+      drawAll();
+    }
+    return false;
+  }
+  if (wifiModalActive()) {
+    wifiModalPoll();
+    if (!wifiModalActive()) {
       s_down = false;
       s_pressed = Hit{};
       drawAll();
@@ -437,10 +442,15 @@ bool settingsScreenPoll() {
   const unsigned long now = millis();
   bool closed = false;
 
-  if (kPages[s_page].location) {
+  if (kPages[s_page].special == Special::kLocation) {
     locationTabTouch(down && y >= kHeaderH, x, y);
     if (locationModalActive()) {
       return false;  // a touch on the tab just opened the editor
+    }
+  } else if (kPages[s_page].special == Special::kWifi) {
+    wifiTabTouch(down && y >= kHeaderH, x, y);  // also advances scans and status
+    if (wifiModalActive()) {
+      return false;
     }
   }
 

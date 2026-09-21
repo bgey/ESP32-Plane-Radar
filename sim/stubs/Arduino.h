@@ -4,6 +4,7 @@
 #include <cstdarg>
 #include <cstdint>
 #include <cstdio>
+#include <thread>
 
 inline unsigned long millis() {
   using namespace std::chrono;
@@ -25,3 +26,7 @@ struct SimSerial {
 };
 
 inline SimSerial Serial;
+
+inline void delay(unsigned long ms) {
+  std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}

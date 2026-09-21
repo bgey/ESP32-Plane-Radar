@@ -73,20 +73,10 @@ bool parseCoord(const char* text, double lo, double hi, double* out) {
   return true;
 }
 
-// ---- Shared widgets -----------------------------------------------------------
-
+// Buttons come from the shared helper.
 void drawButton(int x, int y, int w, int h, const char* label, int font_px,
                 bool pressed, bool accent) {
-  const uint16_t fill = pressed ? radar::kColorGrid
-                                : (accent ? tft.color565(30, 130, 60)
-                                          : radar::kColorFooterBackground);
-  tft.fillRoundRect(x, y, w, h, 6, fill);
-  tft.drawRoundRect(x, y, w, h, 6, radar::kColorGrid);
-  uiApplyFont(font_px);
-  tft.setTextDatum(textdatum_t::middle_center);
-  tft.setTextColor(radar::kColorLabel, fill);
-  tft.drawString(label, x + w / 2, y + h / 2);
-  tft.setTextDatum(textdatum_t::top_left);
+  uiDrawButton(x, y, w, h, label, font_px, pressed, accent);
 }
 
 // ---- Tab (list of places) -----------------------------------------------------

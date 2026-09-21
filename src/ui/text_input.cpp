@@ -47,7 +47,7 @@ struct Key {
   char ch;            // character to insert, or 0 for a function key
   char label[8];
   int x, y, w, h;
-  enum Kind { kChar, kBackspace, kClear, kOk, kCancel, kShift, kSpace } kind;
+  enum Kind { kChar, kBackspace, kClear, kOk, kCancel, kShift, kSpace, kLayer } kind;
 };
 
 void drawKey(const Key& key, bool pressed, bool highlighted, const char* label,
@@ -74,8 +74,12 @@ int hitKey(const Key* keys, size_t count, int x, int y) {
   return -1;
 }
 
+/**
+ * Titled text box. Long text shows its tail (the end being typed); reserve_right
+ * keeps that many pixels at the right edge free for a button.
+ */
 void drawTextField(const char* title, const char* text, int x, int y, int w, int h,
-                   const char* hint, uint16_t hint_color) {
+                   const char* hint, uint16_t hint_color, int reserve_right = 0) {
   applyFont(FontSize::kSmall);
   tft.setTextDatum(textdatum_t::top_left);
   tft.setTextColor(radar::kColorTagType, radar::kColorBackground);
@@ -92,9 +96,14 @@ void drawTextField(const char* title, const char* text, int x, int y, int w, int
   applyFont(FontSize::kLarge);
   tft.setTextDatum(textdatum_t::middle_left);
   tft.setTextColor(radar::kColorTagAltitude, radar::kColorFooterBackground);
-  char shown[40];
+  char shown[80];
   snprintf(shown, sizeof(shown), "%s_", text);
-  tft.drawString(shown, x + 10, y + h / 2);
+  const char* start = shown;
+  while (start[0] != '\0' && start[1] != '\0' &&
+         tft.textWidth(start) > w - 20 - reserve_right) {
+    ++start;  // scroll: drop characters from the left until the tail fits
+  }
+  tft.drawString(start, x + 10, y + h / 2);
   tft.setTextDatum(textdatum_t::top_left);
 }
 
@@ -269,67 +278,87 @@ bool padActivate(int index, InputResult* result) {
 
 // ---- Keyboard -----------------------------------------------------------------
 
-constexpr size_t kKbMaxText = 23;
+constexpr size_t kKbMaxText = 64;
+constexpr int kShowButtonW = 76;
+constexpr int kShowIndex = -2;  // pseudo key index for the SHOW/HIDE button
 
-Key s_kb_keys[48];
+Key s_kb_keys[56];
 size_t s_kb_key_count = 0;
 bool s_kb_open = false;
 char s_kb_text[kKbMaxText + 1] = {};
-char s_kb_title[24] = {};
+char s_kb_title[48] = {};
 size_t s_kb_max_len = kKbMaxText;
 bool s_kb_shift = true;
+bool s_kb_symbols = false;
+bool s_kb_secret = false;
+bool s_kb_reveal = false;
 bool s_kb_down = false;
 int s_kb_pressed = -1;
 
-void addKbKey(char ch, const char* label, Key::Kind kind, int x, int y, int w) {
+constexpr int kKbUnit = 46;  // one full key including its gap
+constexpr int kKbLeft = 10;
+
+/** Append a key of `half_units` half-key widths at *x, then advance *x. */
+void addKbKey(int* x, int y, char ch, const char* label, Key::Kind kind, int half_units) {
   Key& key = s_kb_keys[s_kb_key_count++];
   key.ch = ch;
   snprintf(key.label, sizeof(key.label), "%s", label);
-  key.x = x;
+  key.x = *x;
   key.y = y;
-  key.w = w;
+  key.w = half_units * kKbUnit / 2 - 2;
   key.h = 47;
   key.kind = kind;
+  *x += half_units * kKbUnit / 2;
+}
+
+void addKbChars(int y, const char* chars, int start_half_units) {
+  int x = kKbLeft + start_half_units * kKbUnit / 2;
+  for (const char* p = chars; *p != '\0'; ++p) {
+    const char label[2] = {*p, '\0'};
+    addKbKey(&x, y, *p, label, Key::kChar, 2);
+  }
 }
 
 void buildKeyboardKeys() {
   s_kb_key_count = 0;
-  constexpr int kUnit = 46;
-  constexpr int kLeft = 10;
-  constexpr int kKeyW = kUnit - 2;
-  static const char kDigits[] = "1234567890";
-  static const char kRow1[] = "QWERTYUIOP";
-  static const char kRow2[] = "ASDFGHJKL";
-  static const char kRow3[] = "ZXCVBNM";
   int y = 58;
-  for (int i = 0; i < 10; ++i) {
-    const char label[2] = {kDigits[i], '\0'};
-    addKbKey(kDigits[i], label, Key::kChar, kLeft + i * kUnit, y, kKeyW);
-  }
+  addKbChars(y, "1234567890", 0);
   y += 52;
-  for (int i = 0; i < 10; ++i) {
-    const char label[2] = {kRow1[i], '\0'};
-    addKbKey(kRow1[i], label, Key::kChar, kLeft + i * kUnit, y, kKeyW);
+  int x = kKbLeft;
+  if (!s_kb_symbols) {
+    addKbChars(y, "QWERTYUIOP", 0);
+    y += 52;
+    addKbChars(y, "ASDFGHJKL", 1);
+    y += 52;
+    addKbKey(&x, y, 0, "SHIFT", Key::kShift, 3);
+    for (const char* p = "ZXCVBNM"; *p != '\0'; ++p) {
+      const char label[2] = {*p, '\0'};
+      addKbKey(&x, y, *p, label, Key::kChar, 2);
+    }
+    addKbKey(&x, y, 0, "DEL", Key::kBackspace, 3);
+    y += 52;
+    x = kKbLeft;
+    addKbKey(&x, y, 0, "CANCEL", Key::kCancel, 4);
+    addKbKey(&x, y, 0, "#+=", Key::kLayer, 3);
+    addKbKey(&x, y, '-', "-", Key::kChar, 2);
+    addKbKey(&x, y, ' ', "SPACE", Key::kSpace, 5);
+    addKbKey(&x, y, '.', ".", Key::kChar, 2);
+    addKbKey(&x, y, 0, "OK", Key::kOk, 4);
+  } else {
+    addKbChars(y, "!@#$%^&*()", 0);
+    y += 52;
+    addKbChars(y, "-_=+[]{}\\|", 0);
+    y += 52;
+    addKbChars(y, ";:'\",.<>/?", 0);
+    y += 52;
+    addKbKey(&x, y, 0, "CANCEL", Key::kCancel, 3);
+    addKbKey(&x, y, 0, "ABC", Key::kLayer, 3);
+    addKbKey(&x, y, '~', "~", Key::kChar, 2);
+    addKbKey(&x, y, '`', "`", Key::kChar, 2);
+    addKbKey(&x, y, ' ', "SPACE", Key::kSpace, 4);
+    addKbKey(&x, y, 0, "DEL", Key::kBackspace, 3);
+    addKbKey(&x, y, 0, "OK", Key::kOk, 3);
   }
-  y += 52;
-  for (int i = 0; i < 9; ++i) {
-    const char label[2] = {kRow2[i], '\0'};
-    addKbKey(kRow2[i], label, Key::kChar, kLeft + kUnit / 2 + i * kUnit, y, kKeyW);
-  }
-  y += 52;
-  addKbKey(0, "SHIFT", Key::kShift, kLeft, y, kUnit * 3 / 2 - 2);
-  for (int i = 0; i < 7; ++i) {
-    const char label[2] = {kRow3[i], '\0'};
-    addKbKey(kRow3[i], label, Key::kChar, kLeft + kUnit * 3 / 2 + i * kUnit, y, kKeyW);
-  }
-  addKbKey(0, "DEL", Key::kBackspace, kLeft + kUnit * 3 / 2 + 7 * kUnit, y,
-           kUnit * 3 / 2 - 2);
-  y += 52;
-  addKbKey(0, "CANCEL", Key::kCancel, kLeft, y, kUnit * 2 - 2);
-  addKbKey('-', "-", Key::kChar, kLeft + kUnit * 2, y, kKeyW);
-  addKbKey(' ', "SPACE", Key::kSpace, kLeft + kUnit * 3, y, kUnit * 4 - 2);
-  addKbKey('.', ".", Key::kChar, kLeft + kUnit * 7, y, kKeyW);
-  addKbKey(0, "OK", Key::kOk, kLeft + kUnit * 8, y, kUnit * 2 - 2);
 }
 
 char keyChar(const Key& key) {
@@ -339,9 +368,39 @@ char keyChar(const Key& key) {
   return key.ch;
 }
 
+int showButtonX() { return kScreenW - 10 - kShowButtonW - 4; }
+
+bool inShowButton(int x, int y) {
+  return s_kb_secret && x >= showButtonX() && x < showButtonX() + kShowButtonW &&
+         y >= 28 && y < 52;
+}
+
+void drawShowButton(bool pressed) {
+  const uint16_t fill = pressed ? radar::kColorGrid : radar::kColorBackground;
+  tft.fillRoundRect(showButtonX(), 28, kShowButtonW, 24, 5, fill);
+  tft.drawRoundRect(showButtonX(), 28, kShowButtonW, 24, 5, radar::kColorGrid);
+  applyFont(FontSize::kSmall);
+  tft.setTextDatum(textdatum_t::middle_center);
+  tft.setTextColor(radar::kColorLabel, fill);
+  tft.drawString(s_kb_reveal ? "HIDE" : "SHOW", showButtonX() + kShowButtonW / 2, 40);
+  tft.setTextDatum(textdatum_t::top_left);
+}
+
 void drawKbField() {
+  char masked[kKbMaxText + 1];
+  const char* shown = s_kb_text;
+  if (s_kb_secret && !s_kb_reveal) {
+    const size_t length = strlen(s_kb_text);
+    memset(masked, '*', length);
+    masked[length] = '\0';
+    shown = masked;
+  }
   tft.startWrite();
-  drawTextField(s_kb_title, s_kb_text, 10, 26, kScreenW - 20, 28, "", 0);
+  drawTextField(s_kb_title, shown, 10, 26, kScreenW - 20, 28, "", 0,
+                s_kb_secret ? kShowButtonW + 8 : 0);
+  if (s_kb_secret) {
+    drawShowButton(false);
+  }
   tft.endWrite();
 }
 
@@ -391,8 +450,7 @@ bool kbActivate(int index, InputResult* result) {
         s_kb_text[length + 1] = '\0';
       }
       const bool was_shift = s_kb_shift;
-      // Auto-capitalise the first letter, then go back to lower case.
-      s_kb_shift = false;
+      s_kb_shift = false;  // shift is one-shot
       drawKbField();
       if (was_shift) {
         redrawKbLetters();
@@ -408,6 +466,11 @@ bool kbActivate(int index, InputResult* result) {
     case Key::kShift:
       s_kb_shift = !s_kb_shift;
       redrawKbLetters();
+      return false;
+    case Key::kLayer:
+      s_kb_symbols = !s_kb_symbols;
+      buildKeyboardKeys();
+      drawKbAll();
       return false;
     case Key::kOk:
       s_kb_open = false;
@@ -475,12 +538,16 @@ InputResult numberPadPoll() {
 
 const char* numberPadText() { return s_pad_text; }
 
-void keyboardOpen(const char* title, const char* initial_text, size_t max_len) {
+void keyboardOpen(const char* title, const char* initial_text, size_t max_len, bool secret) {
   snprintf(s_kb_title, sizeof(s_kb_title), "%s", title);
   s_kb_max_len = max_len > kKbMaxText ? kKbMaxText : max_len;
   snprintf(s_kb_text, sizeof(s_kb_text), "%.*s", static_cast<int>(s_kb_max_len),
            initial_text != nullptr ? initial_text : "");
-  s_kb_shift = s_kb_text[0] == '\0';
+  s_kb_secret = secret;
+  s_kb_reveal = false;
+  s_kb_symbols = false;
+  // Passwords are case sensitive, so no auto-capitalisation for them.
+  s_kb_shift = !secret && s_kb_text[0] == '\0';
   s_kb_down = false;
   s_kb_pressed = -1;
   buildKeyboardKeys();
@@ -498,23 +565,36 @@ InputResult keyboardPoll() {
   InputResult result = InputResult::kOpen;
 
   if (down) {
-    const int hit = hitKey(s_kb_keys, s_kb_key_count, x, y);
+    const int hit = inShowButton(x, y) ? kShowIndex : hitKey(s_kb_keys, s_kb_key_count, x, y);
     if (!s_kb_down) {
       s_kb_down = true;
       s_kb_pressed = hit;
       if (hit >= 0) {
         drawKbKey(hit);
+      } else if (hit == kShowIndex) {
+        tft.startWrite();
+        drawShowButton(true);
+        tft.endWrite();
       }
-    } else if (hit != s_kb_pressed && s_kb_pressed >= 0) {
+    } else if (hit != s_kb_pressed && s_kb_pressed != -1) {
       const int previous = s_kb_pressed;
-      s_kb_pressed = -1;
-      drawKbKey(previous);
+      s_kb_pressed = -1;  // finger slid off: cancel
+      if (previous >= 0) {
+        drawKbKey(previous);
+      } else {
+        tft.startWrite();
+        drawShowButton(false);
+        tft.endWrite();
+      }
     }
   } else if (s_kb_down) {
     s_kb_down = false;
     const int released = s_kb_pressed;
     s_kb_pressed = -1;
-    if (released >= 0) {
+    if (released == kShowIndex) {
+      s_kb_reveal = !s_kb_reveal;
+      drawKbField();
+    } else if (released >= 0) {
       drawKbKey(released);
       kbActivate(released, &result);
     }
