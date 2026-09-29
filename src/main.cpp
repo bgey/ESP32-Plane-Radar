@@ -9,6 +9,7 @@
 #include "hardware/display.h"
 #include "hardware/touch_calibration.h"
 #include "services/adsb_client.h"
+#include "services/buzzer.h"
 #include "services/display_settings.h"
 #include "services/ota_update.h"
 #include "services/radar_location.h"
@@ -122,6 +123,7 @@ void setup() {
   bootButtonInit();
   displayInit();
   touchCalibrationInit();
+  services::buzzer::init();
   if (wifiShowsSetupScreenOnBoot()) {
     statusScreenPortal();
   }
@@ -157,6 +159,7 @@ void loop() {
   handleTouch();
   if (g_radar_visible) {
     ui::alertBannerTick();
+    services::buzzer::tick();
   }
 
   if (WiFi.status() != WL_CONNECTED) {

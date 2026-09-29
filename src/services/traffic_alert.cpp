@@ -22,6 +22,7 @@ constexpr char kKeyAltitude[] = "altFt";
 constexpr char kKeyPass[] = "passKm";
 constexpr char kKeyTime[] = "timeS";
 constexpr char kKeyIgnoreGliders[] = "noGlider";
+constexpr char kKeySoundEnabled[] = "sound";
 
 // An active alert only clears once it is clearly outside its thresholds (no flicker).
 constexpr float kExitPassFactor = 1.35f;
@@ -36,7 +37,7 @@ struct Active {
 };
 
 Settings s_settings = {true, kDefaultMaxAltitudeFt, kDefaultMaxPassKm,
-                       kDefaultMaxTimeS, kDefaultIgnoreGliders};
+                       kDefaultMaxTimeS, kDefaultIgnoreGliders, kDefaultSoundEnabled};
 Active s_active[kMaxActive];
 size_t s_count = 0;
 unsigned long s_updated_ms = 0;
@@ -51,6 +52,7 @@ void save() {
   prefs.putFloat(kKeyPass, s_settings.max_pass_km);
   prefs.putFloat(kKeyTime, s_settings.max_time_s);
   prefs.putBool(kKeyIgnoreGliders, s_settings.ignore_gliders);
+  prefs.putBool(kKeySoundEnabled, s_settings.sound_enabled);
   prefs.end();
 }
 
@@ -138,6 +140,7 @@ void init() {
   s_settings.max_time_s =
       clampf(prefs.getFloat(kKeyTime, kDefaultMaxTimeS), kMinTimeS, kMaxTimeS);
   s_settings.ignore_gliders = prefs.getBool(kKeyIgnoreGliders, kDefaultIgnoreGliders);
+  s_settings.sound_enabled = prefs.getBool(kKeySoundEnabled, kDefaultSoundEnabled);
   prefs.end();
 }
 
@@ -150,6 +153,11 @@ void setEnabled(bool enabled) {
 
 void setIgnoreGliders(bool ignore) {
   s_settings.ignore_gliders = ignore;
+  save();
+}
+
+void setSoundEnabled(bool enabled) {
+  s_settings.sound_enabled = enabled;
   save();
 }
 
@@ -170,7 +178,7 @@ void setMaxTimeS(float seconds) {
 
 void resetSettings() {
   s_settings = {true, kDefaultMaxAltitudeFt, kDefaultMaxPassKm, kDefaultMaxTimeS,
-                kDefaultIgnoreGliders};
+                kDefaultIgnoreGliders, kDefaultSoundEnabled};
   save();
 }
 

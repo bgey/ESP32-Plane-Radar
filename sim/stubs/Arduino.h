@@ -30,3 +30,20 @@ inline SimSerial Serial;
 inline void delay(unsigned long ms) {
   std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
+
+// GPIO/tone stand-ins for services that toggle a real pin (e.g. the buzzer). No pin
+// actually exists on a desktop, so tone()/noTone() just print what would sound.
+constexpr int OUTPUT = 0;
+constexpr int INPUT = 1;
+constexpr int INPUT_PULLUP = 2;
+constexpr int LOW = 0;
+constexpr int HIGH = 1;
+
+inline void pinMode(int, int) {}
+inline void digitalWrite(int, int) {}
+inline int digitalRead(int) { return HIGH; }
+
+inline void tone(int pin, unsigned frequency, unsigned long duration = 0) {
+  std::printf("BEEP pin=%d %uHz %lums\n", pin, frequency, duration);
+}
+inline void noTone(int pin) { std::printf("SILENCE pin=%d\n", pin); }

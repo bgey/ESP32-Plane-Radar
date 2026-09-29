@@ -24,9 +24,12 @@ struct Settings {
    * unreliable tracks and many false alerts). They are still shown on the radar.
    */
   bool ignore_gliders;
+  /** Sound the buzzer (when fitted) while a pending alert exists. */
+  bool sound_enabled;
 };
 
 constexpr bool kDefaultIgnoreGliders = true;
+constexpr bool kDefaultSoundEnabled = true;
 constexpr float kDefaultMaxAltitudeFt = 3000.0f;
 constexpr float kDefaultMaxPassKm = 1.5f;
 constexpr float kDefaultMaxTimeS = 120.0f;
@@ -58,6 +61,7 @@ void init();
 const Settings& settings();
 void setEnabled(bool enabled);
 void setIgnoreGliders(bool ignore);
+void setSoundEnabled(bool enabled);
 void setMaxAltitudeFt(float ft);
 void setMaxPassKm(float km);
 void setMaxTimeS(float seconds);

@@ -19,6 +19,7 @@
 #include "services/radar_location.h"
 #include "sim_api.h"
 #include "ui/radar_display.h"
+#include "services/buzzer.h"
 #include "services/traffic_alert.h"
 #include "ui/alert_banner.h"
 #include "ui/radar_range.h"
@@ -188,6 +189,7 @@ void pumpTouch(int ms) {
         case ui::TouchAction::kNone:
           break;
       }
+      services::buzzer::tick();
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
@@ -238,6 +240,7 @@ int userFunc(bool* running) {
   displayInit();
   tft.setRotation(0);
   services::alert::init();
+  services::buzzer::init();
 
   if (g_opts.wifi_boot) {
     // Run the boot-time Wi-Fi screen on its own thread, drive it with the taps, and
@@ -289,6 +292,7 @@ int userFunc(bool* running) {
       continue;  // like the firmware: no radar updates behind the settings screen
     }
     ui::alertBannerTick();
+    services::buzzer::tick();
     if (millis() - last_move_ms >= 500) {
       last_move_ms = millis();
       advanceAircraft(0.5f);

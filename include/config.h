@@ -50,6 +50,9 @@ constexpr gpio_num_t kTouchPinIrq = GPIO_NUM_35;  // PEN
 /** false = poll the XPT2046 over SPI and ignore PEN (works even if PEN is not wired). */
 constexpr bool kTouchUseIrq = false;
 
+// --- Alert buzzer: passive piezo, one leg to GND ---
+constexpr gpio_num_t kBuzzerPin = GPIO_NUM_17;
+
 constexpr int kDisplayWidth = 480;
 constexpr int kDisplayHeight = 320;
 
