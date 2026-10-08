@@ -14,6 +14,7 @@
 #include "ui/radar_range.h"
 #include "ui/wifi_settings.h"
 #include "ui/radar_theme.h"
+#include "ui/theme.h"
 
 namespace lgfx_fonts = lgfx::v1::fonts;
 
@@ -52,6 +53,8 @@ struct Row {
   void (*value)(char*, size_t);
   void (*step)(int);
   void (*run)();
+  /** Repaint the whole screen after a toggle (it changes how everything looks). */
+  bool full_redraw;  // omitted in a row's initializer means false
 };
 
 /** Pages that are drawn and handled by their own module instead of generic rows. */
@@ -79,6 +82,13 @@ void formatDistance(char* out, size_t n, float km) {
 // The 24-hour clock, temperature unit and distance unit are only editable on the
 // web setup page; they keep their defaults (24 h, Celsius, km) unless changed there.
 const Row kGeneralRows[] = {
+    {"Day theme (sunlight)", Kind::kToggle,
+     [] { return theme::mode() == theme::Mode::kDay; },
+     [] {
+       theme::setMode(theme::mode() == theme::Mode::kDay ? theme::Mode::kNight
+                                                          : theme::Mode::kDay);
+     },
+     nullptr, nullptr, nullptr, true},
     {"Show runways", Kind::kToggle, [] { return radar::showRunways(); },
      [] { radar::setShowRunways(!radar::showRunways()); }, nullptr, nullptr, nullptr},
     {"Clock and weather panel", Kind::kToggle,
@@ -179,9 +189,9 @@ unsigned long s_repeat_ms = 0;
 float s_body_vlw_size = 0.4f;
 bool s_metrics_ready = false;
 
-uint16_t colorOn() { return tft.color565(40, 170, 70); }
-uint16_t colorOff() { return tft.color565(70, 80, 95); }
-uint16_t colorDone() { return tft.color565(30, 130, 60); }
+uint16_t colorOn() { return radar::kColorToggleOn; }
+uint16_t colorOff() { return radar::kColorToggleOff; }
+uint16_t colorDone() { return radar::kColorAccent; }
 
 void applyBodyFont() {
   displayFontEnsureLoaded(tft);
@@ -254,7 +264,7 @@ Hit hitTest(int x, int y) {
 
 void drawStepBox(int x, int cy, bool plus, bool pressed) {
   const int y = cy - kStepBoxH / 2;
-  const uint16_t fill = pressed ? radar::kColorGrid : radar::kColorFooterBackground;
+  const uint16_t fill = pressed ? radar::kColorPressed : radar::kColorFooterBackground;
   tft.fillRoundRect(x, y, kStepBoxW, kStepBoxH, 5, fill);
   tft.drawRoundRect(x, y, kStepBoxW, kStepBoxH, 5, radar::kColorGrid);
   const int cx = x + kStepBoxW / 2;
@@ -294,7 +304,7 @@ void drawRow(int row) {
     tft.fillRoundRect(x, cy - kToggleH / 2, kToggleW, kToggleH, kToggleH / 2,
                       on ? colorOn() : colorOff());
     const int knob_x = on ? x + kToggleW - kToggleH / 2 : x + kToggleH / 2;
-    tft.fillCircle(knob_x, cy, kToggleH / 2 - 3, radar::kColorLabel);
+    tft.fillCircle(knob_x, cy, kToggleH / 2 - 3, radar::kColorOnAccent);
   } else if (r.kind == Kind::kStepper) {
     drawStepBox(minusX(), cy, false,
                 s_down && s_pressed.target == Target::kMinus && s_pressed.index == row);
@@ -329,7 +339,7 @@ void drawHeader() {
     const bool pressed =
         s_down && s_pressed.target == Target::kTab && s_pressed.index == i;
     const uint16_t fill =
-        selected ? radar::kColorGrid
+        selected ? radar::kColorPressed
                  : (pressed ? radar::kColorBackground : radar::kColorFooterBackground);
     tft.fillRoundRect(tabX(i), 5, kTabW - 4, kTabH, 6, fill);
     tft.drawRoundRect(tabX(i), 5, kTabW - 4, kTabH, 6, radar::kColorGrid);
@@ -338,9 +348,9 @@ void drawHeader() {
   }
 
   const bool done_pressed = s_down && s_pressed.target == Target::kDone;
-  const uint16_t done_fill = done_pressed ? radar::kColorGrid : colorDone();
+  const uint16_t done_fill = done_pressed ? radar::kColorPressed : colorDone();
   tft.fillRoundRect(doneX(), 5, kDoneW, kTabH, 6, done_fill);
-  tft.setTextColor(radar::kColorLabel, done_fill);
+  tft.setTextColor(done_pressed ? radar::kColorLabel : radar::kColorOnAccent, done_fill);
   tft.drawString("DONE", doneX() + kDoneW / 2, 5 + kTabH / 2);
   tft.setTextDatum(textdatum_t::top_left);
   tft.endWrite();
@@ -391,10 +401,16 @@ void activate(const Hit& hit) {
       s_page = hit.index;
       drawAll();
       break;
-    case Target::kToggle:
-      kPages[s_page].rows[hit.index].toggle();
-      drawRow(hit.index);
+    case Target::kToggle: {
+      const Row& row = kPages[s_page].rows[hit.index];
+      row.toggle();
+      if (row.full_redraw) {
+        drawAll();
+      } else {
+        drawRow(hit.index);
+      }
       break;
+    }
     case Target::kAction:
       kPages[s_page].rows[hit.index].run();
       // Values may have changed anywhere on the page.

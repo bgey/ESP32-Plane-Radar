@@ -24,6 +24,7 @@
 #include "ui/alert_banner.h"
 #include "ui/radar_range.h"
 #include "ui/settings_screen.h"
+#include "ui/theme.h"
 #include "ui/touch_controls.h"
 #include "ui/wifi_settings.h"
 
@@ -37,6 +38,7 @@ struct Options {
   int rotation = -1;  // -1 = use config::kDisplayRotation
   bool inbound = false;
   bool wifi_boot = false;
+  int theme = -1;  // -1 = saved/default, 0 = night, 1 = day
   bool inbound_glider = false;
   int inbound_alt_ft = 2600;
   bool window = false;
@@ -241,6 +243,10 @@ int userFunc(bool* running) {
   tft.setRotation(0);
   services::alert::init();
   services::buzzer::init();
+  ui::theme::init();
+  if (g_opts.theme >= 0) {
+    ui::theme::setMode(g_opts.theme == 1 ? ui::theme::Mode::kDay : ui::theme::Mode::kNight);
+  }
 
   if (g_opts.wifi_boot) {
     // Run the boot-time Wi-Fi screen on its own thread, drive it with the taps, and
@@ -319,6 +325,16 @@ int main(int argc, char** argv) {
       center_lat = std::atof(argv[++i]);
     } else if (std::strcmp(a, "--lon") == 0 && i + 1 < argc) {
       center_lon = std::atof(argv[++i]);
+    } else if (std::strcmp(a, "--theme") == 0 && i + 1 < argc) {
+      const char* name = argv[++i];
+      if (std::strcmp(name, "day") == 0) {
+        g_opts.theme = 1;
+      } else if (std::strcmp(name, "night") == 0) {
+        g_opts.theme = 0;
+      } else {
+        std::fprintf(stderr, "--theme must be day or night\n");
+        return 2;
+      }
     } else if (std::strcmp(a, "--inbound-glider") == 0) {
       g_opts.inbound = true;
       g_opts.inbound_glider = true;
@@ -356,7 +372,7 @@ int main(int argc, char** argv) {
       std::fprintf(stderr,
                    "usage: %s [--out file.png] [--range 0-3] [--planes N] "
                    "[--seed N] [--rotation 0|1] [--weather TEXT] [--time TEXT] "
-                   "[--textscale 80-130] [--tap X,Y]... [--inbound] [--inbound-alt FT] [--lat DEG] [--lon DEG] [--window]\n",
+                   "[--textscale 80-130] [--tap X,Y]... [--inbound] [--inbound-alt FT] [--lat DEG] [--lon DEG] [--theme day|night] [--window]\n",
                    argv[0]);
       return 2;
     }

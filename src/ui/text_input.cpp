@@ -52,9 +52,8 @@ struct Key {
 
 void drawKey(const Key& key, bool pressed, bool highlighted, const char* label,
              FontSize font) {
-  const uint16_t fill = pressed ? radar::kColorGrid
-                                : (highlighted ? radar::kColorGrid
-                                               : radar::kColorFooterBackground);
+  const uint16_t fill = (pressed || highlighted) ? radar::kColorPressed
+                                                 : radar::kColorFooterBackground;
   tft.fillRoundRect(key.x, key.y, key.w, key.h, 6, fill);
   tft.drawRoundRect(key.x, key.y, key.w, key.h, 6, radar::kColorGrid);
   applyFont(font);
@@ -163,7 +162,7 @@ void buildPadKeys() {
 void drawPadValue() {
   tft.startWrite();
   drawTextField(s_pad_title, s_pad_text, 12, 30, kScreenW - 24, 34, s_pad_error,
-                tft.color565(255, 130, 80));
+                radar::kColorBad);
   tft.endWrite();
 }
 
@@ -376,7 +375,7 @@ bool inShowButton(int x, int y) {
 }
 
 void drawShowButton(bool pressed) {
-  const uint16_t fill = pressed ? radar::kColorGrid : radar::kColorBackground;
+  const uint16_t fill = pressed ? radar::kColorPressed : radar::kColorBackground;
   tft.fillRoundRect(showButtonX(), 28, kShowButtonW, 24, 5, fill);
   tft.drawRoundRect(showButtonX(), 28, kShowButtonW, 24, 5, radar::kColorGrid);
   applyFont(FontSize::kSmall);

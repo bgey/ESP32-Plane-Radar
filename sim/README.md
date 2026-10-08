@@ -44,7 +44,8 @@ Options: `--range N` (number of range-button presses from the default 10 km pres
 `'PARTLY CLOUDY 16C RH62%'`, `'8:05A 1 JAN'`), `--textscale 80-130`,
 `--tap X,Y` (repeatable; window pixel coordinates), `--inbound` (adds a low aircraft
 flying straight at the radar position to trigger the low-flyer alert) with
-`--inbound-alt FT` (default 2600), `--lat DEG` / `--lon DEG` (radar centre; distances
+`--inbound-alt FT` (default 2600), `--theme day|night` (colour theme; the saved
+default is night), `--lat DEG` / `--lon DEG` (radar centre; distances
 are scaled for that latitude, as on the device), `--rotation 0|1`
 (0 = portrait 320x480, 1 = landscape 480x320, the firmware default; the window is
 sized to match; 180-degree flips are not simulated), `--out FILE`, `--window`.

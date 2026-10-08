@@ -19,8 +19,9 @@ Build with the **`s3mini`** PlatformIO environment (`pio run -e s3mini -t upload
 <img width="480" alt="Radar with a low-flyer alert" src="docs/images/radar-alert.png" />
 
 - **480×320 layout** — a 320 px radar on the left; clock, weather, the alert banner and touch controls in a panel on the right.
+- **Day / Night theme** — the default Night theme is light on dark. Switch on **SETUP → General → Day theme (sunlight)** for a white background with black text and darker colours, which stays readable in direct sunlight where a dark screen is washed out by reflections. The choice is saved and also applies to the Wi‑Fi screen at boot.
 - **Touch controls** — `[-] [range] [+]` zoom buttons, a **SETUP** button, and tap-to-dismiss on the alert banner. The touch panel is calibrated once on first boot (four crosshairs) and the result is stored in flash; hold the range box for 3 s to recalibrate.
-- **On-device settings** (no phone needed): **General** (runways, clock/weather panel, weather, text size), **Alerts**, **Location** and **Wi‑Fi**. The 24-hour clock, temperature unit and distance unit stay on their defaults (24 h, °C, km) and can only be changed from the web setup page.
+- **On-device settings** (no phone needed): **General** (day theme, runways, clock/weather panel, weather, text size), **Alerts**, **Location** and **Wi‑Fi**. The 24-hour clock, temperature unit and distance unit stay on their defaults (24 h, °C, km) and can only be changed from the web setup page.
 - **Saved places** — keep up to six named locations and switch between them with one tap; type new coordinates on an on-screen number pad. Switching clears stale aircraft and refetches traffic and weather for the new position.
 - **Wi‑Fi on the screen** — scan, pick a network and type the password on an on-screen keyboard (masked, with SHOW/HIDE and a symbols layer). The same screen appears at boot when there is no working network, with the phone portal as a fallback button.
 - **Low-flyer alerts** — an aircraft heading towards your position triggers a yellow ring on the radar and a flashing banner (callsign, type, altitude, pass distance, countdown) when its projected closest approach is within a set distance and time, and below a set altitude (projected with its climb or descent rate). Thresholds, an **Ignore gliders** filter and an **Alert sound** toggle are in the Alerts tab; tapping the banner dismisses that aircraft until it leaves the alert zone.
@@ -33,6 +34,10 @@ Build with the **`s3mini`** PlatformIO environment (`pio run -e s3mini -t upload
   <img width="320" alt="Location settings" src="docs/images/settings-location.png" />
   <img width="320" alt="Wi-Fi settings" src="docs/images/settings-wifi.png" />
 </p>
+
+<img width="480" alt="Radar in the Day theme" src="docs/images/radar-day.png" />
+
+*The same alert scene in the Day theme.*
 
 **Quick start (S3):**
 
@@ -194,6 +199,7 @@ include/
     large_airports.h
   ui/
     radar_theme.h, radar_range.h, radar_display.h, runway_overlay.h, status_screens.h
+    theme.h                — Day/Night colour palettes (all UI colours come from the radar::kColor* roles)
     touch_controls.h       — range [-] [range] [+], SETUP button, banner tap
     settings_screen.h      — on-device settings (General / Alerts / Location / Wi-Fi tabs)
     location_settings.h, wifi_settings.h, text_input.h (number pad + keyboard), ui_font.h

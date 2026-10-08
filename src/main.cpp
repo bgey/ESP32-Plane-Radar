@@ -21,6 +21,7 @@
 #include "ui/radar_range.h"
 #include "ui/settings_screen.h"
 #include "ui/status_screens.h"
+#include "ui/theme.h"
 #include "ui/touch_controls.h"
 
 namespace {
@@ -122,6 +123,7 @@ void setup() {
 
   bootButtonInit();
   displayInit();
+  ui::theme::init();
   touchCalibrationInit();
   services::buzzer::init();
   if (wifiShowsSetupScreenOnBoot()) {

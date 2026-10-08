@@ -43,9 +43,9 @@ Field s_field = Field::kName;
 char s_message[40] = {};
 bool s_message_good = false;
 
-uint16_t colorGood() { return tft.color565(80, 200, 90); }
-uint16_t colorBad() { return tft.color565(255, 130, 80); }
-uint16_t colorDim() { return tft.color565(90, 110, 130); }
+uint16_t colorGood() { return radar::kColorGood; }
+uint16_t colorBad() { return radar::kColorBad; }
+uint16_t colorDim() { return radar::kColorDim; }
 
 // ---- Coordinate text ----------------------------------------------------------
 
@@ -283,7 +283,7 @@ void drawEditorItem(EditKind kind, bool pressed) {
       tft.setTextDatum(textdatum_t::middle_left);
       tft.setTextColor(radar::kColorLabel, radar::kColorBackground);
       tft.drawString(label, kFieldLabelX, y + kFieldH / 2);
-      const uint16_t fill = pressed ? radar::kColorGrid : radar::kColorFooterBackground;
+      const uint16_t fill = pressed ? radar::kColorPressed : radar::kColorFooterBackground;
       tft.fillRoundRect(kFieldX, y, kFieldW, kFieldH, 6, fill);
       tft.drawRoundRect(kFieldX, y, kFieldW, kFieldH, 6, radar::kColorGrid);
       tft.setTextColor(value[0] != '\0' ? radar::kColorTagAltitude : colorDim(), fill);

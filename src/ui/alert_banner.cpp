@@ -64,7 +64,7 @@ void clearBanner() {
 void drawLine(const char* text, bool large, int* y, uint16_t fill) {
   applyStyle(large);
   tft.setTextDatum(textdatum_t::top_center);
-  tft.setTextColor(radar::kColorLabel, fill);
+  tft.setTextColor(radar::kColorOnAccent, fill);  // the banner is red in both themes
   tft.drawString(text, bannerX() + bannerWidth() / 2, *y);
   *y += tft.fontHeight() + kLineGapPx;
 }
@@ -76,7 +76,7 @@ void drawBanner(const services::adsb::Aircraft& plane,
       phase == 0 ? radar::kColorAlertBright : radar::kColorAlertDark;
   tft.fillRect(bannerX(), kBannerTopPx, bannerWidth(), kBannerHeightPx, fill);
   tft.drawRect(bannerX(), kBannerTopPx, bannerWidth(), kBannerHeightPx,
-               radar::kColorLabel);
+               radar::kColorOnAccent);
 
   int y = kBannerTopPx + 8;
   drawLine("LOW INBOUND", false, &y, fill);

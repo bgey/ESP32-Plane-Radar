@@ -110,7 +110,7 @@ void applyLabelStyle(bool setup_button) {
 void drawSetupButton() {
   const bool pressed = s_pressed == kSetup;
   const uint16_t fill =
-      pressed ? radar::kColorGrid : radar::kColorFooterBackground;
+      pressed ? radar::kColorPressed : radar::kColorFooterBackground;
   tft.fillRect(rowX(), setupY(), radar::kBandWidthPx, kSetupHeightPx, fill);
   tft.drawRect(rowX(), setupY(), radar::kBandWidthPx, kSetupHeightPx,
                radar::kColorGrid);
@@ -132,12 +132,12 @@ void drawRow() {
     const int w = boxEdge(i + 1) - x0;
     const bool pressed = (i == s_pressed) && boxEnabled(i);
     const uint16_t fill =
-        pressed ? radar::kColorGrid : radar::kColorFooterBackground;
+        pressed ? radar::kColorPressed : radar::kColorFooterBackground;
     tft.fillRect(x0, y, w, kRowHeightPx, fill);
 
     const int cx = x0 + w / 2;
     const uint16_t glyph =
-        boxEnabled(i) ? radar::kColorLabel : radar::kColorGrid;
+        boxEnabled(i) ? radar::kColorLabel : radar::kColorDisabled;
     if (i == kMinus) {
       drawMinus(cx, cy, glyph);
     } else if (i == kPlus) {

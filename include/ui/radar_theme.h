@@ -124,60 +124,36 @@ constexpr int kBandLineHeightPx = 12;
 constexpr int kBandLineGapPx = 3;
 constexpr int kBandSectionGapPx = 10;
 
-/** RGB565 palette targets (applied in initPalette). */
-constexpr uint8_t kBgR = 4;
-constexpr uint8_t kBgG = 10;
-constexpr uint8_t kBgB = 28;
-constexpr uint8_t kGridR = 16;
-constexpr uint8_t kGridG = 100;
-constexpr uint8_t kGridB = 32;
-constexpr uint8_t kAircraftR = 255;
-constexpr uint8_t kAircraftG = 0;
-constexpr uint8_t kAircraftB = 0;
-constexpr uint8_t kTrackR = 255;
-constexpr uint8_t kTrackG = 0;
-constexpr uint8_t kTrackB = 255;
-constexpr uint8_t kTagTypeR = 255;
-constexpr uint8_t kTagTypeG = 200;
-constexpr uint8_t kTagTypeB = 0;
-constexpr uint8_t kTagAltR = 90;
-constexpr uint8_t kTagAltG = 200;
-constexpr uint8_t kTagAltB = 255;
-constexpr uint8_t kRunwayR = 56;
-constexpr uint8_t kRunwayG = 150;
-constexpr uint8_t kRunwayB = 170;
-/** Lighter teal for ICAO labels (vs runway lines). */
-constexpr uint8_t kRunwayLabelR = 110;
-constexpr uint8_t kRunwayLabelG = 210;
-constexpr uint8_t kRunwayLabelB = 230;
-constexpr uint8_t kFooterBgR = 3;
-constexpr uint8_t kFooterBgG = 16;
-constexpr uint8_t kFooterBgB = 32;
-/** Alert ring around a low, inbound aircraft (yellow: aircraft symbols are red). */
-constexpr uint8_t kAlertRingR = 255;
-constexpr uint8_t kAlertRingG = 220;
-constexpr uint8_t kAlertRingB = 0;
-/** Alert banner flashes between these two reds. */
-constexpr uint8_t kAlertDarkR = 90;
-constexpr uint8_t kAlertDarkG = 0;
-constexpr uint8_t kAlertDarkB = 0;
-constexpr uint8_t kAlertBrightR = 210;
-constexpr uint8_t kAlertBrightG = 0;
-constexpr uint8_t kAlertBrightB = 0;
-
-extern uint16_t kColorBackground;
-extern uint16_t kColorGrid;
-extern uint16_t kColorLabel;
+/**
+ * Colour roles (RGB565). The values are set by ui::theme::apply() for the current
+ * Day/Night theme; always draw with these instead of literal colours.
+ */
+// Radar and text
+extern uint16_t kColorBackground;      // screen background
+extern uint16_t kColorGrid;            // rings, crosshairs, outlines, separators
+extern uint16_t kColorLabel;           // primary text and glyphs
 extern uint16_t kColorCenter;
 extern uint16_t kColorAircraft;
 extern uint16_t kColorTrackVector;
-extern uint16_t kColorTagType;
-extern uint16_t kColorTagAltitude;
+extern uint16_t kColorTagType;         // aircraft type text; also secondary text
+extern uint16_t kColorTagAltitude;     // altitude, times and values
 extern uint16_t kColorRunway;
 extern uint16_t kColorRunwayLabel;
-extern uint16_t kColorFooterBackground;
+extern uint16_t kColorFooterBackground;  // info panel, buttons and header bars
+// Low-flyer alert (the banner flashes between dark and bright red)
 extern uint16_t kColorAlertRing;
 extern uint16_t kColorAlertDark;
 extern uint16_t kColorAlertBright;
+// Controls
+extern uint16_t kColorPressed;    // fill of a pressed or selected button/tab (text: kColorLabel)
+extern uint16_t kColorAccent;     // primary action fill, e.g. DONE (text: kColorOnAccent)
+extern uint16_t kColorOnAccent;   // text and knobs on accent, toggle and alert fills
+extern uint16_t kColorToggleOn;
+extern uint16_t kColorToggleOff;
+extern uint16_t kColorDisabled;   // glyph of a button that cannot be used right now
+// Status text
+extern uint16_t kColorGood;
+extern uint16_t kColorBad;
+extern uint16_t kColorDim;        // hints and secondary text
 
 }  // namespace ui::radar

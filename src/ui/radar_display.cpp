@@ -22,6 +22,7 @@
 #include "ui/alert_banner.h"
 #include "ui/runway_overlay.h"
 #include "ui/touch_controls.h"
+#include "ui/theme.h"
 
 namespace lgfx_fonts = lgfx::v1::fonts;
 
@@ -42,6 +43,15 @@ uint16_t kColorFooterBackground = 0x0084;
 uint16_t kColorAlertRing = 0xFFE0;
 uint16_t kColorAlertDark = 0x8000;
 uint16_t kColorAlertBright = 0xF800;
+uint16_t kColorPressed = 0x0320;
+uint16_t kColorAccent = 0x0420;
+uint16_t kColorOnAccent = 0xFFFF;
+uint16_t kColorToggleOn = 0x2D48;
+uint16_t kColorToggleOff = 0x4290;
+uint16_t kColorDisabled = 0x0320;
+uint16_t kColorGood = 0x5648;
+uint16_t kColorBad = 0xFC10;
+uint16_t kColorDim = 0x5B90;
 
 }  // namespace radar
 
@@ -209,38 +219,7 @@ void initFooterMetrics() {
   s_footer_metrics_ready = true;
 }
 
-void initPalette() {
-  radar::kColorBackground = tft.color565(radar::kBgR, radar::kBgG, radar::kBgB);
-  radar::kColorGrid = tft.color565(radar::kGridR, radar::kGridG, radar::kGridB);
-  radar::kColorLabel = tft.color565(255, 255, 255);
-  radar::kColorCenter = tft.color565(255, 255, 255);
-  // GC9A01 BGR panel: swap R/B in color565 so logical red renders red on screen.
-  if (config::kDisplayRgbOrder) {
-    radar::kColorAircraft =
-        tft.color565(radar::kAircraftB, radar::kAircraftG, radar::kAircraftR);
-  } else {
-    radar::kColorAircraft =
-        tft.color565(radar::kAircraftR, radar::kAircraftG, radar::kAircraftB);
-  }
-  radar::kColorTrackVector =
-      tft.color565(radar::kTrackR, radar::kTrackG, radar::kTrackB);
-  radar::kColorTagType =
-      tft.color565(radar::kTagTypeR, radar::kTagTypeG, radar::kTagTypeB);
-  radar::kColorTagAltitude =
-      tft.color565(radar::kTagAltR, radar::kTagAltG, radar::kTagAltB);
-  radar::kColorRunway =
-      tft.color565(radar::kRunwayR, radar::kRunwayG, radar::kRunwayB);
-  radar::kColorRunwayLabel = tft.color565(radar::kRunwayLabelR, radar::kRunwayLabelG,
-                                          radar::kRunwayLabelB);
-  radar::kColorFooterBackground =
-      tft.color565(radar::kFooterBgR, radar::kFooterBgG, radar::kFooterBgB);
-  radar::kColorAlertRing = tft.color565(radar::kAlertRingR, radar::kAlertRingG,
-                                        radar::kAlertRingB);
-  radar::kColorAlertDark = tft.color565(radar::kAlertDarkR, radar::kAlertDarkG,
-                                        radar::kAlertDarkB);
-  radar::kColorAlertBright = tft.color565(
-      radar::kAlertBrightR, radar::kAlertBrightG, radar::kAlertBrightB);
-}
+void initPalette() { theme::apply(); }
 
 /** Offset from the radar centre in km; degrees of longitude shrink with latitude. */
 void offsetKmFromCenter(float lat, float lon, float* dx_km, float* dy_km,

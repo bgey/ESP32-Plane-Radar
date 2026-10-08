@@ -51,9 +51,9 @@ unsigned long s_result_ms = 0;
 bool s_drawn_connected = false;
 char s_drawn_ssid[wf::kSsidMax + 1] = {};
 
-uint16_t colorGood() { return tft.color565(80, 200, 90); }
-uint16_t colorBad() { return tft.color565(255, 130, 80); }
-uint16_t colorDim() { return tft.color565(90, 110, 130); }
+uint16_t colorGood() { return radar::kColorGood; }
+uint16_t colorBad() { return radar::kColorBad; }
+uint16_t colorDim() { return radar::kColorDim; }
 
 /** Copy text, shortening it with ".." so it fits in max_w pixels (font already set). */
 void fitText(const char* text, int max_w, char* out, size_t n) {
