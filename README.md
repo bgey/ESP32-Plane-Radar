@@ -1,6 +1,6 @@
 # Plane Radar
 
-> **This is a fork** of [ironicbadger/ESP32-Plane-Radar](https://github.com/ironicbadger/ESP32-Plane-Radar). It adds a second hardware target — an **ESP32-S3 (Wemos S3 Mini) with a 4″ 480×320 touch display** — plus on-device settings, saved places, low-flyer alerts with a buzzer, and a desktop simulator. The original ESP32-C3 + round-display target still builds unchanged. See [This fork](#this-fork-esp32-s3--4-touch-display) below.
+> **This is a fork** of [ironicbadger/ESP32-Plane-Radar](https://github.com/ironicbadger/ESP32-Plane-Radar). It adds a second hardware target — an **ESP32-S3 (Wemos S3 Mini) with a 4″ 480×320 touch display** — plus on-device settings, saved places, low-flyer alerts with a buzzer, and a desktop simulator. The original ESP32-C3 + round-display target still builds unchanged. See [This fork](#this-fork-esp32-s3--4-touch-display) below, and the [changelog](CHANGELOG.md) for what changed.
 
 <img width="800" height="450" alt="plane-radar" src="https://github.com/user-attachments/assets/716d0992-dab8-47ba-8f1a-2aec7f607419" />
 
@@ -213,8 +213,10 @@ include/
     buzzer.h               — alert beeps
 data/
   ui_font.vlw              — embedded smooth UI font (Noto Sans Bold)
+CHANGELOG.md               — user-facing history; the release workflow publishes its sections
 scripts/
   build_large_airports.py
+  changelog_section.py     — prints one version's section of CHANGELOG.md
 sim/                       — desktop simulator (SDL), see sim/README.md
 docs/images/               — simulator screenshots used in this README
 src/
@@ -332,10 +334,15 @@ Never upload the merged/full image to the OTA form; it contains the bootloader a
 
 To ship a version users can download:
 
+1. In [`CHANGELOG.md`](CHANGELOG.md), rename `## [Unreleased]` to the version and date (for example `## [1.0.0] - 2026-10-15`) and put a fresh, empty `## [Unreleased]` above it. Commit and push.
+2. Tag that commit and push the tag:
+
 ```bash
 git tag v1.0.0
 git push origin v1.0.0
 ```
+
+The release page text is the matching changelog section (`v1.0.0` uses `## [1.0.0]`; a version with no section of its own, or a manual run of the workflow, uses `## [Unreleased]`), followed by a short table saying which file belongs to which board ([`.github/release-files.md`](.github/release-files.md)). `scripts/changelog_section.py CHANGELOG.md 1.0.0` prints exactly what a release would use.
 
 The release workflow attaches the images for both boards. Use `-full.bin` at offset `0x0` for first install/recovery and `-ota.bin` in the device's authenticated firmware page, always the file for your own board.
 
