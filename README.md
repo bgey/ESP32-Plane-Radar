@@ -1,10 +1,42 @@
 # Plane Radar
 
+> **This is a fork** of [ironicbadger/ESP32-Plane-Radar](https://github.com/ironicbadger/ESP32-Plane-Radar). It adds a second hardware target — an **ESP32-S3 (Wemos S3 Mini) with a 4″ 480×320 touch display** — plus on-device settings, saved places, low-flyer alerts with a buzzer, and a desktop simulator. The original ESP32-C3 + round-display target still builds unchanged. See [This fork](#this-fork-esp32-s3--4-touch-display) below.
+
 <img width="800" height="450" alt="plane-radar" src="https://github.com/user-attachments/assets/716d0992-dab8-47ba-8f1a-2aec7f607419" />
 
-**3D printed case (STL + assembly):** [MakerWorld](https://makerworld.com/en/models/2872376-esp32-plane-radar-live-ads-b-on-a-round-display#profileId-3207083) · **Firmware:** [Releases](../../releases)
+*Original ESP32-C3 round-display build (upstream photo).*
 
-Firmware for an **ESP32-C3 Super Mini** and a **1.28″ round GC9A01** display (240×240). Shows a circular **ADS-B radar** around your configured location, with flight routes, detailed aircraft models, local weather/time, browser settings, and authenticated OTA updates.
+**Upstream 3D printed case (round-display version):** [MakerWorld](https://makerworld.com/en/models/2872376-esp32-plane-radar-live-ads-b-on-a-round-display#profileId-3207083) · **Firmware:** [Releases](../../releases)
+
+Firmware for an **ESP32-C3 Super Mini** and a **1.28″ round GC9A01** display (240×240), or an **ESP32-S3** with a **4″ ST7796S** touch display (480×320). Shows a circular **ADS-B radar** around your configured location, with flight routes, detailed aircraft models, local weather/time, browser settings, and authenticated OTA updates.
+
+## This fork: ESP32-S3 + 4″ touch display
+
+Build with the **`s3mini`** PlatformIO environment (`pio run -e s3mini -t upload`). Everything below applies to that target; the C3 build keeps the original behaviour.
+
+*Screenshots are renders from the desktop simulator (see [`sim/`](sim/README.md)), not photos of the device.*
+
+<img width="480" alt="Radar with a low-flyer alert" src="docs/images/radar-alert.png" />
+
+- **480×320 layout** — a 320 px radar on the left; clock, weather, the alert banner and touch controls in a panel on the right.
+- **Touch controls** — `[-] [range] [+]` zoom buttons, a **SETUP** button, and tap-to-dismiss on the alert banner. The touch panel is calibrated once on first boot (four crosshairs) and the result is stored in flash; hold the range box for 3 s to recalibrate.
+- **On-device settings** (no phone needed): **General** (runways, clock/weather panel, weather, text size), **Alerts**, **Location** and **Wi‑Fi**. The 24-hour clock, temperature unit and distance unit stay on their defaults (24 h, °C, km) and can only be changed from the web setup page.
+- **Saved places** — keep up to six named locations and switch between them with one tap; type new coordinates on an on-screen number pad. Switching clears stale aircraft and refetches traffic and weather for the new position.
+- **Wi‑Fi on the screen** — scan, pick a network and type the password on an on-screen keyboard (masked, with SHOW/HIDE and a symbols layer). The same screen appears at boot when there is no working network, with the phone portal as a fallback button.
+- **Low-flyer alerts** — an aircraft heading towards your position triggers a yellow ring on the radar and a flashing banner (callsign, type, altitude, pass distance, countdown) when its projected closest approach is within a set distance and time, and below a set altitude (projected with its climb or descent rate). Thresholds, an **Ignore gliders** filter and an **Alert sound** toggle are in the Alerts tab; tapping the banner dismisses that aircraft until it leaves the alert zone.
+- **Buzzer** — an optional passive piezo on GPIO 17 beeps while an alert is pending.
+- **Latitude-aware distances** — east–west distances are scaled by the cosine of the radar's latitude, so the picture is true to scale wherever you set the position.
+- **Desktop simulator** — run the real UI code on a PC with fake aircraft, scripted taps and screenshots, so layout and flows can be tested without the hardware ([`sim/README.md`](sim/README.md)).
+
+<p>
+  <img width="320" alt="Alerts settings" src="docs/images/settings-alerts.png" />
+  <img width="320" alt="Location settings" src="docs/images/settings-location.png" />
+  <img width="320" alt="Wi-Fi settings" src="docs/images/settings-wifi.png" />
+</p>
+
+**Hardware used:** Wemos LOLIN S3 Mini (ESP32-S3FH4R2, 4 MB flash, 2 MB PSRAM), a 4″ 480×320 ST7796S SPI module with XPT2046 resistive touch, and optionally a passive piezo buzzer. Wiring is in [Wiring (ST7796S + XPT2046 ↔ Wemos S3 Mini)](#wiring-st7796s--xpt2046--wemos-s3-mini).
+
+> The low-flyer alert only knows what ADS-B reports. Aircraft without ADS-B out (many gliders and light aircraft use FLARM instead) are not shown, and positions of low aircraft depend on nearby community receivers.
 
 ## What it does
 
@@ -15,14 +47,16 @@ Firmware for an **ESP32-C3 Super Mini** and a **1.28″ round GC9A01** display (
 
 After Wi‑Fi is saved, the device reconnects automatically; the radar runs in the main loop with periodic ADS-B updates (~3 s).
 
-## Controls (BOOT, GPIO 9, active LOW)
+## Controls (BOOT, GPIO 9 on the C3 / GPIO 0 on the S3, active LOW)
 
 | Action | Effect |
 |--------|--------|
 | **Short tap** | Cycle range preset (5 → 10 → 15 → 25 km); saved to flash |
-| **Hold 3 s** | Factory-reset Wi‑Fi, location, units, display settings, and OTA password; reboot into setup portal |
+| **Hold 3 s** | Factory-reset Wi‑Fi, location and saved places, units, display settings, and OTA password; reboot into setup (alert thresholds and touch calibration are kept) |
 
 During setup you can also hold BOOT at power-on to force a credential reset (same as the long press).
+
+On the **S3 touch build** the on-screen controls replace the short tap: `[-]` zooms out to the next larger range and `[+]` zooms in; each dims at the end of the range list. The BOOT short tap still cycles ranges when the settings screen is closed.
 
 ## Wi‑Fi setup portal
 
@@ -41,6 +75,8 @@ During setup you can also hold BOOT at power-on to force a credential reset (sam
 The same portal runs on the setup AP and on the device’s LAN IP while connected to Wi‑Fi. mDNS hostname is `plane-radar` → **plane-radar.local** (`kPortalHostname` in `config.h`). Some clients resolve `.local` slowly; use the IP if needed.
 
 Changing coordinates no longer requires a credential reset. The new position is validated in the browser and firmware, saved to NVS, and used by the next aircraft/weather refresh.
+
+The web page stays available on the S3 build too (it is the only place to change the clock format, temperature unit and miles/km). On a touch device you normally do not need it: Wi‑Fi, location, alerts and display options can all be set from the on-device **SETUP** screen.
 
 **Custom fields** (stored in NVS):
 
@@ -128,7 +164,8 @@ Edit **`include/config.h`** for hardware and behavior:
 | Portal | `kPortalApName`, `kPortalIp`, `kPortalHostname` / `kPortalHostUrl` (mDNS; needs `-DWM_MDNS` in `platformio.ini`) |
 | Wi‑Fi timing | connect attempts, reconnect grace, portal timeout (`0` = no timeout) |
 | BOOT | `kBootPin`, `kBootResetHoldMs`, `kBootTapMinMs` |
-| Display SPI | pins, `kDisplayInvert`, `kDisplayRgbOrder`, `kDisplaySpiWriteHz` |
+| Display SPI | pins, `kDisplayInvert`, `kDisplayRgbOrder`, `kDisplaySpiWriteHz`, `kDisplayRotation` |
+| Touch / buzzer (S3) | `kTouchPinCs`, `kTouchPinIrq`, `kTouchUseIrq`, `kTouchSpiHz`, `kBuzzerPin` |
 | Default location | `kDefaultRadarLat`, `kDefaultRadarLon` (until portal overrides) |
 | ADS-B | `kAdsbFetchIntervalMs`, `kAdsbShowGroundAircraft` |
 | Flight enrichment | lookup interval, timeout, and cache durations |
@@ -141,30 +178,32 @@ Range presets: `include/ui/radar_range.h` (`kRangePresets`).
 
 ```
 include/
-  config.h
+  config.h                 — pins, sizes and defaults (S3 block selected by PLANE_RADAR_TARGET_S3_ST7796)
+  geo.h                    — km per degree of latitude/longitude at the radar position
   hardware/
-    lgfx_config.hpp
-    display.h
-    display_font.h
+    lgfx_config.hpp        — LovyanGFX device: GC9A01 (C3), ST7796S + XPT2046 (S3), SDL (simulator)
+    display.h, display_font.h, touch_calibration.h
   data/
     large_airports.h
   ui/
-    radar_theme.h
-    radar_range.h
-    radar_display.h
-    runway_overlay.h
-    status_screens.h
+    radar_theme.h, radar_range.h, radar_display.h, runway_overlay.h, status_screens.h
+    touch_controls.h       — range [-] [range] [+], SETUP button, banner tap
+    settings_screen.h      — on-device settings (General / Alerts / Location / Wi-Fi tabs)
+    location_settings.h, wifi_settings.h, text_input.h (number pad + keyboard), ui_font.h
+    alert_banner.h         — flashing low-flyer banner
   services/
-    wifi_setup.h
-    radar_location.h
-    adsb_client.h
-    display_settings.h
-    ota_update.h
-    weather_time.h
+    wifi_setup.h           — Wi-Fi manager portal and boot flow
+    wifi_control.h         — scan/connect used by the on-device Wi-Fi screens
+    radar_location.h       — position and saved places
+    adsb_client.h, display_settings.h, ota_update.h, weather_time.h
+    traffic_alert.h        — low-flyer detection and its settings
+    buzzer.h               — alert beeps
 data/
   ui_font.vlw              — embedded smooth UI font (Noto Sans Bold)
 scripts/
   build_large_airports.py
+sim/                       — desktop simulator (SDL), see sim/README.md
+docs/images/               — simulator screenshots used in this README
 src/
   main.cpp
   data/
@@ -189,7 +228,7 @@ src/
 
 ## Wiring (ST7796S + XPT2046 ↔ Wemos S3 Mini)
 
-> Placeholder pin plan — confirm against your board's silkscreen before wiring. Radar layout/geometry still assumes 240×240 on this target; the display is up but drawing is not yet tuned for 480×320.
+> This is the pin plan of the author's build. The display and touch pins have been tested on hardware; the buzzer on GPIO 17 has so far only been exercised in the simulator. Check the pins against your own board's silkscreen before wiring; they are set in [`include/config.h`](include/config.h). GPIO 33–37 are free on the S3FH4R2 (its quad flash/PSRAM uses GPIO 26–32 internally). Avoid the strapping pins 3, 45 and 46 for these wires; GPIO 0 is the onboard BOOT button.
 
 11-pin header: `CLK`/`MOS`/`MIS` are shared internally between the display and touch controller (only one physical pin each), with `CS1` selecting the display and `CS2`/`PEN` for the touch controller.
 
@@ -206,6 +245,9 @@ src/
 | CS1 (display CS) | GPIO **10** |
 | CS2 (touch CS) | GPIO **18** (left header) |
 | PEN (touch IRQ) | GPIO **35** (left header) |
+| Buzzer (optional) | GPIO **17** (left header) — passive piezo, other leg to GND |
+
+The touch controller is polled over SPI and `PEN` is not used by the firmware (`kTouchUseIrq = false` in `config.h`), so touch works even if that wire is not connected.
 
 The BOOT button in the pin tables above (GPIO 9 on the C3, GPIO 0 on the S3) is each board's own onboard push-button — it is not a display wire and needs no connection to the screen.
 
@@ -268,6 +310,8 @@ Never upload the merged/full image to the OTA form; it contains the bootloader a
 | [Build](.github/workflows/build.yml) | Push / PR to `main` | Artifact `plane-radar-supermini` (merged + split `.bin` files, ~90 days) |
 | [Release](.github/workflows/release.yml) | Git tag `v*` (e.g. `v1.0.0`) | GitHub Release `-full.bin` and `-ota.bin` assets + checksums |
 
+Both workflows currently build the **`supermini`** (ESP32-C3) target only; build and flash the S3 firmware locally with `pio run -e s3mini -t upload`.
+
 To ship a version users can download:
 
 ```bash
@@ -276,6 +320,10 @@ git push origin v1.0.0
 ```
 
 The release workflow attaches both images. Use `-full.bin` at offset `0x0` for first install/recovery and `-ota.bin` in the device's authenticated firmware page.
+
+## Credits and license
+
+Based on [ironicbadger/ESP32-Plane-Radar](https://github.com/ironicbadger/ESP32-Plane-Radar) (radar, ADS-B client, routes, weather, setup portal and OTA come from there). The ESP32-S3 / ST7796S port, touch UI, settings screens, saved places, alerts, buzzer and simulator were added in this fork. Released under the [MIT License](LICENSE), with the original copyright notice kept.
 
 ## Dependencies
 
