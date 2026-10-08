@@ -12,7 +12,7 @@ usage() {
 Usage: scripts/merge-firmware.sh [options]
 
   --no-build     Skip pio run (merge only; firmware must already be built)
-  --env NAME     PlatformIO env (default: supermini)
+  --env NAME     PlatformIO env: supermini (ESP32-C3) or s3mini (ESP32-S3); default: supermini
   -o PATH        Output file (default: release/plane-radar-merged.bin)
   -h, --help     Show this help
 EOF
@@ -55,5 +55,9 @@ fi
 
 mkdir -p "$(dirname "$OUT")"
 cp "$MERGED" "$OUT"
+case "$ENV" in
+  s3mini) CHIP="ESP32-S3" ;;
+  *) CHIP="ESP32-C3" ;;
+esac
 echo "Wrote ${OUT}"
-echo "Flash at offset 0x0 with chip ESP32-C3, 4MB flash (Web Serial flasher)."
+echo "Flash at offset 0x0 with chip ${CHIP}, 4MB flash (Web Serial flasher)."

@@ -34,6 +34,13 @@ Build with the **`s3mini`** PlatformIO environment (`pio run -e s3mini -t upload
   <img width="320" alt="Wi-Fi settings" src="docs/images/settings-wifi.png" />
 </p>
 
+**Quick start (S3):**
+
+1. Wire the display, touch and (optionally) the buzzer as in [the wiring table](#wiring-st7796s--xpt2046--wemos-s3-mini), or change the pins in [`include/config.h`](include/config.h).
+2. Flash it: either download the `-s3mini-full.bin` from [Releases](../../releases) ([how](#prebuilt-firmware-no-toolchain-needed)), or build with PlatformIO: `pio run -e s3mini -t upload`.
+3. First boot: touch the screen within 10 seconds to calibrate the touch panel (press each of the four crosshairs firmly). Then pick your Wi‑Fi network on the screen and type its password.
+4. Tap **SETUP → LOCATION** and enter your coordinates, or save them as a named place. Until you do, the radar is centred on the default position in `config.h` (Amsterdam).
+
 **Hardware used:** Wemos LOLIN S3 Mini (ESP32-S3FH4R2, 4 MB flash, 2 MB PSRAM), a 4″ 480×320 ST7796S SPI module with XPT2046 resistive touch, and optionally a passive piezo buzzer. Wiring is in [Wiring (ST7796S + XPT2046 ↔ Wemos S3 Mini)](#wiring-st7796s--xpt2046--wemos-s3-mini).
 
 > The low-flyer alert only knows what ADS-B reports. Aircraft without ADS-B out (many gliders and light aircraft use FLARM instead) are not shown, and positions of low aircraft depend on nearby community receivers.
@@ -253,39 +260,46 @@ The BOOT button in the pin tables above (GPIO 9 on the C3, GPIO 0 on the S3) is 
 
 ## Build
 
+Install [PlatformIO](https://platformio.org/install) (the VS Code extension, or `pip install platformio`), clone this repo, and pick the environment for your board:
+
 ```bash
-pio run -e supermini -t upload
-pio run -e s3mini -t upload
+pio run -e s3mini -t upload      # ESP32-S3 (Wemos S3 Mini) + 4" ST7796S touch display
+pio run -e supermini -t upload   # ESP32-C3 Super Mini + round GC9A01
 pio device monitor
 ```
 
-- PlatformIO envs: **`supermini`** (ESP32-C3 + GC9A01) and **`s3mini`** (ESP32-S3 + ST7796S)
+- PlatformIO envs: **`s3mini`** (ESP32-S3 + ST7796S) and **`supermini`** (ESP32-C3 + GC9A01). The two firmwares are not interchangeable.
 - Serial: **115200** baud
 - USB CDC on boot enabled in `platformio.ini` for both boards' native USB
+- If the upload cannot connect, put the board in download mode: hold **BOOT**, tap **RESET**, release **BOOT**, then upload again.
 
-### Web-flashable release image
+### Prebuilt firmware (no toolchain needed)
 
-Single `.bin` for [esptool-js](https://espressif.github.io/esptool-js/) and similar tools (ESP32-C3, 4 MB, flash at **0x0**):
+Each [GitHub Release](../../releases) contains images for both boards, named `plane-radar-<version>-<board>-full.bin` and `…-ota.bin`, where `<board>` is `s3mini` or `supermini`. Download the **`-full.bin` for your board** and flash it at offset **`0x0`** with a browser flasher such as [esptool-js](https://espressif.github.io/esptool-js/) (Chrome/Edge): choose the chip (**ESP32-S3** or **ESP32-C3**), flash size **4 MB**, put the board in download mode as above, and write the file at `0x0`. Later updates can use the `-ota.bin` from the device's web page (see [OTA firmware updates](#ota-firmware-updates)).
+
+> The `-full.bin` rewrites the whole flash from `0x0`, including the area that stores your settings, so a device flashed with it forgets its Wi‑Fi network, saved places and touch calibration. Use it for the first install or recovery only; use `-ota.bin` for updates to keep your settings.
+
+### Building the web-flashable image yourself
+
+Single `.bin` for [esptool-js](https://espressif.github.io/esptool-js/) and similar tools (4 MB, flash at **0x0**):
 
 ```bash
 chmod +x scripts/merge-firmware.sh   # once
-./scripts/merge-firmware.sh
+./scripts/merge-firmware.sh --env s3mini      # or: --env supermini (the default)
 ```
 
 Writes `release/plane-radar-merged.bin`. Skip rebuild if firmware is already built:
 
 ```bash
-./scripts/merge-firmware.sh --no-build
+./scripts/merge-firmware.sh --env s3mini --no-build
 ```
 
-Or via PlatformIO only (output: `.pio/build/supermini/firmware-merged.bin`):
+Or via PlatformIO only (output: `.pio/build/<env>/firmware-merged.bin`):
 
 ```bash
-pio run -e supermini
-pio run -t merge -e supermini
+pio run -e s3mini
+pio run -t merge -e s3mini
 ```
-
-Put the board in download mode (hold **BOOT**, tap **RESET**), then flash with Chrome/Edge over USB.
 
 ### OTA firmware updates
 
@@ -294,7 +308,7 @@ The firmware uses two 1.75 MB application slots. After the OTA-capable partition
 1. Open `http://plane-radar.local`
 2. Choose **Firmware update**
 3. Sign in with username `admin` and your configured OTA password
-4. Upload the release file ending in **`-ota.bin`** (or PlatformIO's `.pio/build/supermini/firmware.bin`)
+4. Upload the release file ending in **`-ota.bin` for your board** (or PlatformIO's `.pio/build/<env>/firmware.bin`)
 5. Keep power connected while the device writes flash and restarts
 
 The initial password is **`plane-radar`**. Change it under **Setup** before using the device on a shared network.
@@ -307,10 +321,8 @@ Never upload the merged/full image to the OTA form; it contains the bootloader a
 
 | Workflow | When | Output |
 |----------|------|--------|
-| [Build](.github/workflows/build.yml) | Push / PR to `main` | Artifact `plane-radar-supermini` (merged + split `.bin` files, ~90 days) |
-| [Release](.github/workflows/release.yml) | Git tag `v*` (e.g. `v1.0.0`) | GitHub Release `-full.bin` and `-ota.bin` assets + checksums |
-
-Both workflows currently build the **`supermini`** (ESP32-C3) target only; build and flash the S3 firmware locally with `pio run -e s3mini -t upload`.
+| [Build](.github/workflows/build.yml) | Push / PR to `main` | Builds **both boards** in parallel; artifacts `plane-radar-s3mini` and `plane-radar-supermini` (merged + split `.bin` files, ~90 days) |
+| [Release](.github/workflows/release.yml) | Git tag `v*` (e.g. `v1.0.0`) | One GitHub Release with `-s3mini-full.bin`, `-s3mini-ota.bin`, `-supermini-full.bin`, `-supermini-ota.bin` + checksums |
 
 To ship a version users can download:
 
@@ -319,7 +331,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The release workflow attaches both images. Use `-full.bin` at offset `0x0` for first install/recovery and `-ota.bin` in the device's authenticated firmware page.
+The release workflow attaches the images for both boards. Use `-full.bin` at offset `0x0` for first install/recovery and `-ota.bin` in the device's authenticated firmware page, always the file for your own board.
 
 ## Credits and license
 
