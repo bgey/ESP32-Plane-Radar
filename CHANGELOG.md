@@ -13,6 +13,8 @@ the GitHub Release page.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-08
+
 First release of the ESP32-S3 version. The original ESP32-C3 + round-display build is
 unchanged apart from the fixes listed below.
 
