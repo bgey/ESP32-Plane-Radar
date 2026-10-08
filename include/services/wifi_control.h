@@ -25,6 +25,11 @@ struct Network {
 void scanStart();
 /** True once the scan started by scanStart() has finished. */
 bool scanDone();
+/**
+ * True when the last scan could not run at all (the radio stayed busy after a few
+ * retries), as opposed to running and finding nothing.
+ */
+bool scanFailed();
 /** Copy the scan results, strongest first, one entry per network name. */
 size_t scanResults(Network* out, size_t max);
 

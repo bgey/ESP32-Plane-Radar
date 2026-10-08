@@ -12,6 +12,9 @@ void setAircraft(const services::adsb::Aircraft* list, size_t count);
 /** Radar centre (defaults to config::kDefaultRadarLat/Lon). */
 void setCenter(double lat, double lon);
 
+/** Make every fake Wi-Fi scan fail, to see the "scan failed" message. */
+void setWifiScanFails(bool fails);
+
 /** Fake footer data; the strings use the firmware's formats. */
 void setWeatherLine(const char* text);
 void setDateTimeLine(const char* text);

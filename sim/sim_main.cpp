@@ -325,6 +325,8 @@ int main(int argc, char** argv) {
       center_lat = std::atof(argv[++i]);
     } else if (std::strcmp(a, "--lon") == 0 && i + 1 < argc) {
       center_lon = std::atof(argv[++i]);
+    } else if (std::strcmp(a, "--wifi-scan-fail") == 0) {
+      sim::setWifiScanFails(true);
     } else if (std::strcmp(a, "--theme") == 0 && i + 1 < argc) {
       const char* name = argv[++i];
       if (std::strcmp(name, "day") == 0) {

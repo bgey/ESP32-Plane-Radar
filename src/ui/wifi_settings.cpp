@@ -37,6 +37,7 @@ wf::Network s_nets[wf::kMaxNetworks];
 size_t s_net_count = 0;
 bool s_scanning = false;
 bool s_scanned = false;
+bool s_scan_failed = false;
 
 char s_ssid[wf::kSsidMax + 1] = {};
 char s_password[wf::kPasswordMax + 1] = {};
@@ -189,6 +190,8 @@ void drawTabRow(int row, bool pressed) {
       snprintf(text, sizeof(text), "IP %s    signal %d dBm", ip, wf::rssi());
     } else if (s_scanning) {
       snprintf(text, sizeof(text), "Looking for networks...");
+    } else if (s_scanned && s_scan_failed) {
+      snprintf(text, sizeof(text), "Scan failed (radio busy). Tap SCAN to retry.");
     } else if (s_scanned && s_net_count == 0) {
       snprintf(text, sizeof(text), "No networks found. Tap SCAN to try again.");
     } else {
@@ -237,6 +240,7 @@ void drawTab() {
 void beginScan() {
   wf::scanStart();
   s_scanning = true;
+  s_scan_failed = false;
 }
 
 /** Advance the scan and notice connection changes; redraws the tab when needed. */
@@ -245,6 +249,7 @@ void tick() {
     s_net_count = wf::scanResults(s_nets, wf::kMaxNetworks);
     s_scanning = false;
     s_scanned = true;
+    s_scan_failed = wf::scanFailed();
     drawTab();
     return;
   }

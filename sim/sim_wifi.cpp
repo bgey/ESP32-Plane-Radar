@@ -25,6 +25,7 @@ const Fake kNetworks[] = {
 
 unsigned long s_scan_started = 0;
 bool s_scanning = false;
+bool s_scan_fails = false;
 
 char s_ssid[kSsidMax + 1] = "HomeNet";
 bool s_connected = true;
@@ -47,7 +48,12 @@ bool scanDone() {
   return !s_scanning;
 }
 
+bool scanFailed() { return s_scan_fails; }
+
 size_t scanResults(Network* out, size_t max) {
+  if (s_scan_fails) {
+    return 0;
+  }
   size_t n = 0;
   for (const Fake& fake : kNetworks) {
     if (n >= max) {
@@ -89,16 +95,23 @@ ConnectState connectPoll() {
 
 void connectCancel() { s_state = ConnectState::kIdle; }
 
-bool connected() { return s_connected; }
+// A failing scan models a device whose radio is stuck retrying an unreachable network.
+bool up() { return s_connected && !s_scan_fails; }
+
+bool connected() { return up(); }
 
 void currentSsid(char* out, size_t n) {
-  std::snprintf(out, n, "%s", s_connected ? s_ssid : "");
+  std::snprintf(out, n, "%s", up() ? s_ssid : "");
 }
 
 void localIp(char* out, size_t n) {
-  std::snprintf(out, n, "%s", s_connected ? "192.168.1.23" : "");
+  std::snprintf(out, n, "%s", up() ? "192.168.1.23" : "");
 }
 
-int rssi() { return s_connected ? -52 : 0; }
+int rssi() { return up() ? -52 : 0; }
 
 }  // namespace services::wifi
+
+namespace sim {
+void setWifiScanFails(bool fails) { services::wifi::s_scan_fails = fails; }
+}  // namespace sim

@@ -14,7 +14,14 @@ constexpr unsigned long kConnectTimeoutMs = 20000;
 /** Ignore transient failure statuses right after WiFi.begin(). */
 constexpr unsigned long kFailureGraceMs = 2500;
 
+constexpr unsigned kMaxScanAttempts = 3;
+constexpr unsigned long kScanRetryGapMs = 400;
+
 bool s_scanning = false;
+bool s_scan_failed = false;
+unsigned s_scan_attempts = 0;
+unsigned long s_scan_attempt_ms = 0;
+unsigned long s_scan_started_ms = 0;
 Network s_results[kMaxNetworks];
 size_t s_result_count = 0;
 
@@ -59,14 +66,41 @@ void ensureStaMode() {
   }
 }
 
+/**
+ * The radio cannot scan while the station is still trying to connect (for example to a
+ * saved network that is out of reach), so stop that first. A connected station can
+ * scan as it is and is left alone.
+ */
+void quietStationForScan() {
+  if (WiFi.status() == WL_CONNECTED) {
+    return;
+  }
+  WiFi.setAutoReconnect(false);
+  WiFi.disconnect(false, false);
+}
+
+void beginScanAttempt() {
+  const int16_t rc = WiFi.scanNetworks(/*async=*/true, /*show_hidden=*/false);
+  s_scan_attempt_ms = millis();
+  ++s_scan_attempts;
+  Serial.printf("wifi: scan attempt %u rc=%d mode=%d status=%d\n", s_scan_attempts, rc,
+                static_cast<int>(WiFi.getMode()), static_cast<int>(WiFi.status()));
+}
+
 }  // namespace
 
 void scanStart() {
   ensureStaMode();
-  WiFi.scanDelete();
-  WiFi.scanNetworks(/*async=*/true, /*show_hidden=*/false);
+  if (WiFi.status() != WL_CONNECTED) {
+    quietStationForScan();
+    delay(150);  // let the stopped connection attempt settle before scanning
+  }
   s_scanning = true;
+  s_scan_failed = false;
+  s_scan_attempts = 0;
   s_result_count = 0;
+  s_scan_started_ms = millis();
+  beginScanAttempt();
 }
 
 bool scanDone() {
@@ -77,8 +111,26 @@ bool scanDone() {
   if (found == WIFI_SCAN_RUNNING) {
     return false;
   }
+  if (found < 0) {
+    // The scan did not start (the radio was busy) or it timed out: try again a few times.
+    if (s_scan_attempts < kMaxScanAttempts) {
+      if (millis() - s_scan_attempt_ms >= kScanRetryGapMs) {
+        quietStationForScan();
+        beginScanAttempt();
+      }
+      return false;
+    }
+    s_scanning = false;
+    s_scan_failed = true;
+    s_result_count = 0;
+    Serial.printf("wifi: scan failed after %u attempts\n", s_scan_attempts);
+    return true;
+  }
   s_scanning = false;
+  s_scan_failed = false;
   s_result_count = 0;
+  Serial.printf("wifi: scan finished after %lu ms, code %d\n",
+                millis() - s_scan_started_ms, found);
   for (int i = 0; i < found; ++i) {
     const String name = WiFi.SSID(i);
     if (name.length() == 0 || name.length() > kSsidMax) {
@@ -111,8 +163,11 @@ bool scanDone() {
   WiFi.scanDelete();
   std::sort(s_results, s_results + s_result_count,
             [](const Network& a, const Network& b) { return a.rssi > b.rssi; });
+  Serial.printf("wifi: %u usable networks\n", static_cast<unsigned>(s_result_count));
   return true;
 }
+
+bool scanFailed() { return s_scan_failed; }
 
 size_t scanResults(Network* out, size_t max) {
   const size_t n = std::min(max, s_result_count);
